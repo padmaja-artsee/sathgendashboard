@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Activity Detail — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="/activities">Activities</a> / <span>{{ activity.subject or 'Activity' }}</span></div>
+  <div class="header-actions">
+    <form method="post" action="/activities/{{ activity.id }}/delete" class="inline-form" data-confirm="Delete this activity?">
+      <input type="hidden" name="next_url" value="/activities">
+      <button class="btn btn-danger btn-sm">Delete</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="detail-meta-grid">
+    <div>
+      <h2>{{ activity.subject or '(no subject)' }}</h2>
+      <div class="detail-badges">
+        <span class="badge type-{{ activity.activity_type }}">{{ activity.activity_type }}</span>
+        <span class="badge sentiment-{{ activity.sentiment }}">{{ activity.sentiment | replace('_',' ') }}</span>
+        <span class="text-mono">{{ activity.activity_date }}</span>
+      </div>
+    </div>
+    <div class="detail-meta-list">
+      {% if activity.company_name %}<div><label>Company</label> <a href="/companies/{{ activity.company_id }}">{{ activity.company_name }}</a></div>{% endif %}
+      {% if activity.contact_name %}<div><label>Contact</label> {{ activity.contact_name }}</div>{% endif %}
+      {% if activity.opportunity_name %}<div><label>Opportunity</label> <a href="/opportunities/{{ activity.opportunity_id }}">{{ activity.opportunity_name }}</a></div>{% endif %}
+      {% if activity.owner %}<div><label>Owner</label> {{ activity.owner }}</div>{% endif %}
+    </div>
+  </div>
+  {% if activity.summary %}
+  <div class="card-body mt-3">
+    <label class="form-label">Summary</label>
+    <div class="detail-notes">{{ activity.summary }}</div>
+  </div>
+  {% endif %}
+  {% if activity.documents_shared %}
+  <div class="card-body mt-2">
+    <label class="form-label">Documents Shared</label>
+    <div>{{ activity.documents_shared }}</div>
+  </div>
+  {% endif %}
+  {% if activity.action_items %}
+  <div class="card-body mt-2">
+    <label class="form-label">Action Items</label>
+    <div>{{ activity.action_items }}</div>
+  </div>
+  {% endif %}
+  {% if activity.follow_up_required %}
+  <div class="card-body mt-2">
+    <span class="badge priority-medium">Follow-up Required: {{ activity.follow_up_date }}</span>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

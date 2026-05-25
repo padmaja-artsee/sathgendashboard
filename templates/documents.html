@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Documents — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Documents</h1>
+  <a href="/documents/new" class="btn btn-primary">+ Upload Document</a>
+</div>
+
+{% if documents %}
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr><th>Name</th><th>Type</th><th>Version</th><th>Description</th><th>Uploaded</th><th>Shares</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for d in documents %}
+      <tr>
+        <td><a href="/documents/{{ d.id }}" class="link-primary">{{ d.document_name }}</a></td>
+        <td><span class="badge doc-{{ d.document_type }}">{{ d.document_type | replace('_',' ') if d.document_type else '—' }}</span></td>
+        <td>{{ d.version or '1.0' }}</td>
+        <td>{{ d.description[:60] + '…' if d.description and d.description|length > 60 else (d.description or '—') }}</td>
+        <td class="text-mono">{{ d.created_at[:10] }}</td>
+        <td>{{ d.share_count }}</td>
+        <td class="actions">
+          {% if d.file_path %}<a href="/documents/{{ d.id }}/file" class="btn btn-ghost btn-sm">↓ Download</a>{% endif %}
+          <a href="/documents/{{ d.id }}/share" class="btn btn-outline btn-sm">Share</a>
+          <form method="post" action="/documents/{{ d.id }}/delete" class="inline-form" data-confirm="Delete {{ d.document_name }}?">
+            <button class="btn btn-danger btn-sm">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state card">
+  <h3>No documents yet</h3>
+  <p>Upload NDAs, pitch decks, data packages, and other BD materials.</p>
+  <a href="/documents/new" class="btn btn-primary">+ Upload Document</a>
+</div>
+{% endif %}
+{% endblock %}

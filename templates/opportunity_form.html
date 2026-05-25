@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if opportunity else 'New' }} Opportunity — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="/opportunities">Opportunities</a> / <span>{{ opportunity.name if opportunity else 'New' }}</span></div>
+  <h1>{{ 'Edit Opportunity' if opportunity else 'New Opportunity' }}</h1>
+</div>
+
+<div class="card form-card">
+  <form method="post" action="{{ action }}">
+    <div class="form-grid-2">
+      <div class="form-group form-span-2">
+        <label class="form-label">Opportunity Name <span class="required">*</span></label>
+        <input type="text" name="name" value="{{ opportunity.name if opportunity else '' }}" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Company</label>
+        <select name="company_id" class="form-select" id="opp-company-select">
+          <option value="">— Select Company —</option>
+          {% for c in companies %}
+          <option value="{{ c.id }}"
+            {% if opportunity and opportunity.company_id == c.id %}selected
+            {% elif not opportunity and preset_company_id == c.id|string %}selected
+            {% endif %} data-company-id="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Primary Contact</label>
+        <select name="primary_contact_id" class="form-select" id="opp-contact-select">
+          <option value="">— Select Contact —</option>
+          {% for c in contacts %}
+          <option value="{{ c.id }}" {% if opportunity and opportunity.primary_contact_id == c.id %}selected{% endif %}>
+            {{ c.first_name }} {{ c.last_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Opportunity Type</label>
+        <select name="opportunity_type" class="form-select">
+          <option value="">— Select Type —</option>
+          {% for val, label in [('licensing','Licensing'),('co_development','Co-Development'),('investment','Investment'),('partnership','Partnership'),('advisory','Advisory')] %}
+          <option value="{{ val }}" {% if opportunity and opportunity.opportunity_type == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Asset / Program</label>
+        <input type="text" name="asset_or_program" value="{{ opportunity.asset_or_program if opportunity else '' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Indication</label>
+        <input type="text" name="indication" value="{{ opportunity.indication if opportunity else '' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stage</label>
+        <select name="stage" class="form-select">
+          {% for val, label in [('initial_contact','Initial Contact'),('nda_negotiation','NDA Negotiation'),('due_diligence','Due Diligence'),('term_sheet','Term Sheet'),('negotiation','Negotiation'),('closed_won','Closed Won'),('closed_lost','Closed Lost'),('on_hold','On Hold')] %}
+          <option value="{{ val }}" {% if opportunity and opportunity.stage == val %}selected{% elif not opportunity and val == 'initial_contact' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select name="priority" class="form-select">
+          {% for val in ['critical','high','medium','low'] %}
+          <option value="{{ val }}" {% if opportunity and opportunity.priority == val %}selected{% elif not opportunity and val == 'medium' %}selected{% endif %}>{{ val | title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Probability (%)</label>
+        <input type="number" name="probability" min="0" max="100" value="{{ opportunity.probability if opportunity else '0' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estimated Value</label>
+        <input type="text" name="estimated_value" value="{{ opportunity.estimated_value if opportunity else '' }}" class="form-control" placeholder="e.g. $5M upfront + royalties">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Expected Close Date</label>
+        <input type="date" name="expected_close_date" value="{{ opportunity.expected_close_date if opportunity else '' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">NDA Status</label>
+        <select name="nda_status" class="form-select">
+          {% for val in ['none','sent','signed','expired'] %}
+          <option value="{{ val }}" {% if opportunity and opportunity.nda_status == val %}selected{% elif not opportunity and val == 'none' %}selected{% endif %}>{{ val | title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data Room Status</label>
+        <select name="data_room_status" class="form-select">
+          {% for val, label in [('none','None'),('pending','Pending'),('shared','Shared'),('under_review','Under Review'),('revoked','Revoked')] %}
+          <option value="{{ val }}" {% if opportunity and opportunity.data_room_status == val %}selected{% elif not opportunity and val == 'none' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          <option value="open" {% if not opportunity or opportunity.status == 'open' %}selected{% endif %}>Open</option>
+          <option value="closed_won" {% if opportunity and opportunity.status == 'closed_won' %}selected{% endif %}>Closed Won</option>
+          <option value="closed_lost" {% if opportunity and opportunity.status == 'closed_lost' %}selected{% endif %}>Closed Lost</option>
+          <option value="on_hold" {% if opportunity and opportunity.status == 'on_hold' %}selected{% endif %}>On Hold</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Owner</label>
+        <input type="text" name="owner" value="{{ opportunity.owner if opportunity else '' }}" class="form-control">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Next Step</label>
+      <input type="text" name="next_step" value="{{ opportunity.next_step if opportunity else '' }}" class="form-control">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Next Step Due Date</label>
+      <input type="date" name="next_step_due_date" value="{{ opportunity.next_step_due_date if opportunity else '' }}" class="form-control">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Key Objections</label>
+      <textarea name="key_objections" class="form-control" rows="3">{{ opportunity.key_objections if opportunity else '' }}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea name="notes" class="form-control" rows="4">{{ opportunity.notes if opportunity else '' }}</textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{{ 'Save Changes' if opportunity else 'Create Opportunity' }}</button>
+      <a href="{{ '/opportunities/' + opportunity.id|string if opportunity else '/opportunities' }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

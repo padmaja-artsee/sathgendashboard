@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ detail.name }} — Opportunity{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="/opportunities">Opportunities</a> / <span>{{ detail.name }}</span></div>
+  <div class="header-actions">
+    <a href="/opportunities/{{ detail.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
+    <a href="/activities/new?opportunity_id={{ detail.id }}&company_id={{ detail.company_id or '' }}" class="btn btn-primary btn-sm">+ Activity</a>
+    <a href="/followups/new?opportunity_id={{ detail.id }}" class="btn btn-outline btn-sm">+ Follow-up</a>
+  </div>
+</div>
+
+<div class="detail-header card">
+  <div class="detail-meta-grid">
+    <div>
+      <h1 class="detail-name">{{ detail.name }}</h1>
+      <div class="detail-badges">
+        <span class="badge stage-{{ detail.stage }}">{{ detail.stage | replace('_',' ') | title }}</span>
+        <span class="badge priority-{{ detail.priority }}">{{ detail.priority }}</span>
+        <span class="prob-circle">{{ detail.probability }}%</span>
+      </div>
+      {% if detail.company_id %}<div><a href="/companies/{{ detail.company_id }}" class="link-primary">{{ detail.company_name }}</a></div>{% endif %}
+    </div>
+    <div class="detail-meta-list">
+      {% if detail.opportunity_type %}<div><label>Type</label> {{ detail.opportunity_type | replace('_',' ') | title }}</div>{% endif %}
+      {% if detail.asset_or_program %}<div><label>Asset/Program</label> {{ detail.asset_or_program }}</div>{% endif %}
+      {% if detail.indication %}<div><label>Indication</label> {{ detail.indication }}</div>{% endif %}
+      {% if detail.estimated_value %}<div><label>Est. Value</label> {{ detail.estimated_value }}</div>{% endif %}
+      {% if detail.expected_close_date %}<div><label>Close Date</label> {{ detail.expected_close_date }}</div>{% endif %}
+      <div><label>NDA</label> <span class="badge nda-{{ detail.nda_status }}">{{ detail.nda_status }}</span></div>
+      <div><label>Data Room</label> <span class="badge data-{{ detail.data_room_status }}">{{ detail.data_room_status | replace('_',' ') }}</span></div>
+      {% if detail.owner %}<div><label>Owner</label> {{ detail.owner }}</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if detail.next_step %}
+<div class="next-step-box card mt-3">
+  <div class="next-step-label">Next Step</div>
+  <div class="next-step-text">{{ detail.next_step }}</div>
+  {% if detail.next_step_due_date %}<div class="next-step-due">Due: <strong>{{ detail.next_step_due_date }}</strong></div>{% endif %}
+</div>
+{% endif %}
+
+{% if detail.key_objections %}
+<div class="card mt-3">
+  <div class="card-header"><h3 class="card-title">Key Objections</h3></div>
+  <div class="card-body">{{ detail.key_objections }}</div>
+</div>
+{% endif %}
+
+<div class="card mt-3">
+  <div class="card-header">
+    <h3 class="card-title">Activity Timeline</h3>
+    <a href="/activities/new?opportunity_id={{ detail.id }}&company_id={{ detail.company_id or '' }}" class="btn btn-primary btn-sm">+ Log Activity</a>
+  </div>
+  {% if detail.activities %}
+  <div class="timeline">
+    {% for a in detail.activities %}
+    <div class="timeline-item type-{{ a.activity_type }}">
+      <div class="timeline-meta">
+        <span class="text-mono">{{ a.activity_date }}</span>
+        <span class="badge type-{{ a.activity_type }}">{{ a.activity_type }}</span>
+        {% if a.sentiment != 'neutral' %}<span class="badge sentiment-{{ a.sentiment }}">{{ a.sentiment | replace('_',' ') }}</span>{% endif %}
+      </div>
+      <div class="timeline-subject">{{ a.subject or '(no subject)' }}</div>
+      {% if a.summary %}<div class="timeline-body">{{ a.summary }}</div>{% endif %}
+      {% if a.documents_shared %}<div class="timeline-docs">Docs: {{ a.documents_shared }}</div>{% endif %}
+      {% if a.action_items %}<div class="timeline-actions-text">Actions: {{ a.action_items }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><p>No activities yet.</p></div>
+  {% endif %}
+</div>
+
+{% if detail.followups %}
+<div class="card mt-3">
+  <div class="card-header">
+    <h3 class="card-title">Follow-ups</h3>
+    <a href="/followups/new?opportunity_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add</a>
+  </div>
+  <table class="table table-sm">
+    <thead><tr><th>Due</th><th>Action</th><th>Priority</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for f in detail.followups %}
+      <tr>
+        <td class="text-mono">{{ f.due_date }}</td>
+        <td>{{ f.action }}</td>
+        <td><span class="badge priority-{{ f.priority }}">{{ f.priority }}</span></td>
+        <td><span class="badge status-{{ f.status }}">{{ f.status }}</span></td>
+        <td>
+          {% if f.status == 'open' %}
+          <form method="post" action="/followups/{{ f.id }}/complete" class="inline-form">
+            <button class="btn btn-outline btn-sm">✓ Done</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if detail.notes %}
+<div class="card mt-3">
+  <div class="card-header"><h3 class="card-title">Notes</h3></div>
+  <div class="card-body">{{ detail.notes }}</div>
+</div>
+{% endif %}
+{% endblock %}

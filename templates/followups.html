@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Follow-ups — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Follow-ups</h1>
+  <a href="/followups/new" class="btn btn-primary">+ Add Follow-up</a>
+</div>
+
+<div class="filter-bar">
+  <form method="get" class="filter-form">
+    <select name="status" class="form-select">
+      <option value="open" {% if status == 'open' %}selected{% endif %}>Open</option>
+      <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+      <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+      <option value="" {% if status == '' %}selected{% endif %}>All</option>
+    </select>
+    <select name="priority" class="form-select">
+      <option value="">All Priorities</option>
+      {% for val in ['urgent','high','medium','low'] %}
+      <option value="{{ val }}" {% if priority == val %}selected{% endif %}>{{ val | title }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="owner" value="{{ owner }}" placeholder="Owner…" class="form-control form-control-sm">
+    <button type="submit" class="btn btn-outline">Filter</button>
+    <a href="/followups" class="btn btn-ghost">Clear</a>
+  </form>
+</div>
+
+{% if followups %}
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr><th>Due Date</th><th>Action</th><th>Priority</th><th>Company</th><th>Contact</th><th>Opportunity</th><th>Owner</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for f in followups %}
+      <tr class="{% if f.status == 'open' and f.due_date < today %}row-overdue{% endif %}">
+        <td class="text-mono">{{ f.due_date }}</td>
+        <td>{{ f.action }}</td>
+        <td><span class="badge priority-{{ f.priority }}">{{ f.priority }}</span></td>
+        <td>{% if f.company_id %}<a href="/companies/{{ f.company_id }}">{{ f.company_name }}</a>{% else %}—{% endif %}</td>
+        <td>{{ f.contact_name or '—' }}</td>
+        <td>{% if f.opportunity_id %}<a href="/opportunities/{{ f.opportunity_id }}">{{ f.opportunity_name }}</a>{% else %}—{% endif %}</td>
+        <td>{{ f.owner or '—' }}</td>
+        <td><span class="badge status-{{ f.status }}">{{ f.status }}</span></td>
+        <td class="actions">
+          {% if f.status == 'open' %}
+          <form method="post" action="/followups/{{ f.id }}/complete" class="inline-form">
+            <button class="btn btn-outline btn-sm">✓ Done</button>
+          </form>
+          {% endif %}
+          <form method="post" action="/followups/{{ f.id }}/delete" class="inline-form" data-confirm="Delete this follow-up?">
+            <button class="btn btn-danger btn-sm">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state card">
+  <h3>No follow-ups found</h3>
+  <p>Stay on top of your BD pipeline with timely follow-ups.</p>
+  <a href="/followups/new" class="btn btn-primary">+ Add Follow-up</a>
+</div>
+{% endif %}
+{% endblock %}

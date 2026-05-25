@@ -1,64 +1,76 @@
 {% extends "base.html" %}
-{% block title %}Contacts{% endblock %}
+{% block title %}Contacts — Sathgen BD CRM{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div>
-    <h1>Contacts</h1>
-    <p class="subtitle">Company rolodex — name, contact, email, phone, website.</p>
-  </div>
-  <div style="display:flex;gap:.5rem;align-items:center">
-    <a href="/contacts/export.xlsx?company={{ company | urlencode }}&q={{ q | urlencode }}" class="btn btn-ghost btn-sm">↓ Export Excel</a>
-    <a href="/add?tab=lead" class="btn btn-primary">+ Add contact</a>
-  </div>
+  <h1>Contacts</h1>
+  <a href="/contacts/new" class="btn btn-primary">+ Add Contact</a>
 </div>
 
-<div class="card">
-  <form class="search-bar" method="get" action="/contacts">
-    <div>
-      <label class="field-label">Company</label>
-      <input name="company" value="{{ company }}" placeholder="Company name" />
-    </div>
-    <div>
-      <label class="field-label">Search</label>
-      <input name="q" value="{{ q }}" placeholder="Name, email, website…" />
-    </div>
-    <div class="search-actions">
-      <button type="submit" class="btn btn-primary">Search</button>
-      <a href="/contacts" class="btn btn-ghost">Clear</a>
-    </div>
+<div class="filter-bar">
+  <form method="get" class="filter-form">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search contacts…" class="form-control">
+    <select name="company_id" class="form-select">
+      <option value="">All Companies</option>
+      {% for c in companies %}
+      <option value="{{ c.id }}" {% if company_id == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="role_type" class="form-select">
+      <option value="">All Roles</option>
+      {% for val, label in [('decision_maker','Decision Maker'),('champion','Champion'),('influencer','Influencer'),('gatekeeper','Gatekeeper'),('technical','Technical')] %}
+      <option value="{{ val }}" {% if role_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="relationship_strength" class="form-select">
+      <option value="">All Relationships</option>
+      {% for val in ['cold','warm','strong','advocate'] %}
+      <option value="{{ val }}" {% if relationship_strength == val %}selected{% endif %}>{{ val | title }}</option>
+      {% endfor %}
+    </select>
+    <select name="nda_status" class="form-select">
+      <option value="">All NDA Status</option>
+      {% for val in ['none','sent','signed','expired'] %}
+      <option value="{{ val }}" {% if nda_status == val %}selected{% endif %}>{{ val | title }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-outline">Filter</button>
+    <a href="/contacts" class="btn btn-ghost">Clear</a>
   </form>
-  <div class="card-body">
-    {% if contacts %}
-    <table>
-      <thead>
-        <tr>
-          <th>Company</th>
-          <th>Contact</th>
-          <th>Email</th>
-          <th>Phone</th>
-          <th>Website</th>
-        </tr>
-      </thead>
-      <tbody>
+</div>
+
+{% if contacts %}
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr><th>Name</th><th>Company</th><th>Title</th><th>Email</th><th>Role</th><th>Relationship</th><th>NDA</th><th>Last Interaction</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
       {% for c in contacts %}
       <tr>
-        <td><a class="link" href="/customer?name={{ c.company | urlencode }}"><strong>{{ c.company }}</strong></a></td>
-        <td>
-          {{ c.contact or '—' }}
-          {% if c.contact_count and c.contact_count > 1 %}
-          <span class="muted"> (+{{ c.contact_count - 1 }})</span>
-          {% endif %}
+        <td><a href="/contacts/{{ c.id }}" class="link-primary">{{ c.first_name }} {{ c.last_name }}</a></td>
+        <td>{% if c.company_id %}<a href="/companies/{{ c.company_id }}">{{ c.company_name }}</a>{% else %}—{% endif %}</td>
+        <td>{{ c.title or '—' }}</td>
+        <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}—{% endif %}</td>
+        <td><span class="badge role-{{ c.role_type }}">{{ c.role_type | replace('_',' ') if c.role_type else '—' }}</span></td>
+        <td><span class="badge rel-{{ c.relationship_strength }}">{{ c.relationship_strength }}</span></td>
+        <td><span class="badge nda-{{ c.nda_status }}">{{ c.nda_status }}</span></td>
+        <td class="text-mono">{{ c.last_interaction_date or '—' }}</td>
+        <td class="actions">
+          <a href="/contacts/{{ c.id }}/edit" class="btn btn-ghost btn-sm">Edit</a>
+          <form method="post" action="/contacts/{{ c.id }}/delete" class="inline-form" data-confirm="Delete {{ c.first_name }} {{ c.last_name }}?">
+            <button class="btn btn-danger btn-sm">Delete</button>
+          </form>
         </td>
-        <td>{% if c.email %}<a class="link" href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}—{% endif %}</td>
-        <td>{{ c.phone or '—' }}</td>
-        <td>{% if c.website %}<a class="link" href="{{ c.website if c.website.startswith('http') else 'https://' + c.website }}" target="_blank" rel="noopener">{{ c.website }}</a>{% else %}—{% endif %}</td>
       </tr>
       {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty">No contacts yet. <a class="link" href="/add?tab=lead">Add your first contact</a></div>
-    {% endif %}
-  </div>
+    </tbody>
+  </table>
 </div>
+{% else %}
+<div class="empty-state card">
+  <h3>No contacts found</h3>
+  <p>Add key contacts at your target companies.</p>
+  <a href="/contacts/new" class="btn btn-primary">+ Add Contact</a>
+</div>
+{% endif %}
 {% endblock %}

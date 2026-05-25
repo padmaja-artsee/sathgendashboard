@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Companies — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Companies</h1>
+  <a href="/companies/new" class="btn btn-primary">+ Add Company</a>
+</div>
+
+<div class="filter-bar">
+  <form method="get" class="filter-form">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search companies…" class="form-control">
+    <select name="company_type" class="form-select">
+      <option value="">All Types</option>
+      <option value="investor" {% if company_type=='investor' %}selected{% endif %}>Investor</option>
+      <option value="pharma_partner" {% if company_type=='pharma_partner' %}selected{% endif %}>Pharma Partner</option>
+      <option value="co_development" {% if company_type=='co_development' %}selected{% endif %}>Co-Development</option>
+      <option value="advisor" {% if company_type=='advisor' %}selected{% endif %}>Advisor</option>
+      <option value="strategic" {% if company_type=='strategic' %}selected{% endif %}>Strategic</option>
+    </select>
+    <select name="status" class="form-select">
+      <option value="">All Statuses</option>
+      <option value="active" {% if status=='active' %}selected{% endif %}>Active</option>
+      <option value="inactive" {% if status=='inactive' %}selected{% endif %}>Inactive</option>
+      <option value="on_hold" {% if status=='on_hold' %}selected{% endif %}>On Hold</option>
+    </select>
+    <input type="text" name="region" value="{{ region }}" placeholder="Region…" class="form-control form-control-sm">
+    <button type="submit" class="btn btn-outline">Filter</button>
+    <a href="/companies" class="btn btn-ghost">Clear</a>
+  </form>
+</div>
+
+{% if companies %}
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th><th>Type</th><th>Country</th><th>Therapeutic Focus</th>
+        <th>Fit Score</th><th>Status</th><th>Contacts</th><th>Opps</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in companies %}
+      <tr>
+        <td><a href="/companies/{{ c.id }}" class="link-primary">{{ c.name }}</a></td>
+        <td><span class="badge type-{{ c.company_type }}">{{ c.company_type | replace('_',' ') | title if c.company_type else '—' }}</span></td>
+        <td>{{ c.country or '—' }}</td>
+        <td>{{ c.therapeutic_focus or '—' }}</td>
+        <td>
+          <span class="stars">
+            {% for i in range(1,6) %}{% if i <= c.strategic_fit_score %}★{% else %}☆{% endif %}{% endfor %}
+          </span>
+        </td>
+        <td><span class="badge status-{{ c.status }}">{{ c.status | replace('_',' ') }}</span></td>
+        <td><a href="/contacts?company_id={{ c.id }}">{{ c.contact_count }}</a></td>
+        <td><a href="/opportunities?company_id={{ c.id }}">{{ c.opp_count }}</a></td>
+        <td class="actions">
+          <a href="/companies/{{ c.id }}/edit" class="btn btn-ghost btn-sm">Edit</a>
+          <form method="post" action="/companies/{{ c.id }}/delete" class="inline-form" data-confirm="Delete {{ c.name }}?">
+            <button class="btn btn-danger btn-sm">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state card">
+  <h3>No companies found</h3>
+  <p>Add your first BD target company to get started.</p>
+  <a href="/companies/new" class="btn btn-primary">+ Add Company</a>
+</div>
+{% endif %}
+{% endblock %}

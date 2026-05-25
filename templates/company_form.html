@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if company else 'New' }} Company — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb">
+    <a href="/companies">Companies</a> /
+    <span>{{ 'Edit: ' + company.name if company else 'New Company' }}</span>
+  </div>
+  <h1>{{ 'Edit Company' if company else 'Add Company' }}</h1>
+</div>
+
+<div class="card form-card">
+  <form method="post" action="{{ action }}">
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Company Name <span class="required">*</span></label>
+        <input type="text" name="name" value="{{ company.name if company else '' }}" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Company Type</label>
+        <select name="company_type" class="form-select">
+          <option value="">— Select Type —</option>
+          {% for val, label in [('investor','Investor'),('pharma_partner','Pharma Partner'),('co_development','Co-Development'),('advisor','Advisor'),('strategic','Strategic')] %}
+          <option value="{{ val }}" {% if company and company.company_type == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Website</label>
+        <input type="url" name="website" value="{{ company.website if company else '' }}" class="form-control" placeholder="https://…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Country</label>
+        <input type="text" name="country" value="{{ company.country if company else '' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Region</label>
+        <input type="text" name="region" value="{{ company.region if company else '' }}" class="form-control" placeholder="e.g. North America, EU">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Therapeutic Focus</label>
+        <input type="text" name="therapeutic_focus" value="{{ company.therapeutic_focus if company else '' }}" class="form-control" placeholder="e.g. Oncology, Rare Disease">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Strategic Fit Score (1–5)</label>
+        <select name="strategic_fit_score" class="form-select">
+          {% for i in range(6) %}
+          <option value="{{ i }}" {% if company and company.strategic_fit_score == i %}selected{% elif not company and i == 0 %}selected{% endif %}>
+            {% if i == 0 %}— Not Rated —{% else %}{{ i }} — {% for _ in range(i) %}★{% endfor %}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          <option value="active" {% if not company or company.status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if company and company.status == 'inactive' %}selected{% endif %}>Inactive</option>
+          <option value="on_hold" {% if company and company.status == 'on_hold' %}selected{% endif %}>On Hold</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Owner / BD Lead</label>
+        <input type="text" name="owner" value="{{ company.owner if company else '' }}" class="form-control">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea name="notes" class="form-control" rows="4">{{ company.notes if company else '' }}</textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{{ 'Save Changes' if company else 'Create Company' }}</button>
+      <a href="{{ '/companies/' + company.id|string if company else '/companies' }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

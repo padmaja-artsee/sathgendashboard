@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}New Follow-up — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="/followups">Follow-ups</a> / <span>New Follow-up</span></div>
+  <h1>Add Follow-up</h1>
+</div>
+
+<div class="card form-card">
+  <form method="post" action="{{ action }}">
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Due Date <span class="required">*</span></label>
+        <input type="date" name="due_date" value="{{ today }}" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select name="priority" class="form-select">
+          {% for val in ['urgent','high','medium','low'] %}
+          <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ val | title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Company</label>
+        <select name="company_id" class="form-select">
+          <option value="">— Select Company —</option>
+          {% for c in companies %}
+          <option value="{{ c.id }}" {% if preset_company_id == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contact</label>
+        <select name="contact_id" class="form-select">
+          <option value="">— Select Contact —</option>
+          {% for c in contacts %}
+          <option value="{{ c.id }}">{{ c.first_name }} {{ c.last_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Opportunity</label>
+        <select name="opportunity_id" class="form-select">
+          <option value="">— Select Opportunity —</option>
+          {% for o in opportunities %}
+          <option value="{{ o.id }}" {% if preset_opportunity_id == o.id|string %}selected{% endif %}>{{ o.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Owner</label>
+        <input type="text" name="owner" value="" class="form-control">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Action Required <span class="required">*</span></label>
+      <input type="text" name="action" class="form-control" required placeholder="What needs to be done?">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea name="notes" class="form-control" rows="3"></textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Create Follow-up</button>
+      <a href="/followups" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

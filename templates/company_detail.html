@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}{{ detail.name }} — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="/companies">Companies</a> / <span>{{ detail.name }}</span></div>
+  <div class="header-actions">
+    <a href="/companies/{{ detail.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
+    <a href="/contacts/new?company_id={{ detail.id }}" class="btn btn-outline btn-sm">+ Contact</a>
+    <a href="/opportunities/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Opportunity</a>
+    <a href="/activities/new?company_id={{ detail.id }}" class="btn btn-outline btn-sm">+ Activity</a>
+  </div>
+</div>
+
+<div class="detail-header card">
+  <div class="detail-meta-grid">
+    <div>
+      <h1 class="detail-name">{{ detail.name }}</h1>
+      {% if detail.company_type %}<span class="badge type-{{ detail.company_type }}">{{ detail.company_type | replace('_',' ') | title }}</span>{% endif %}
+      <span class="badge status-{{ detail.status }}">{{ detail.status }}</span>
+    </div>
+    <div class="detail-meta-list">
+      {% if detail.website %}<div><label>Website</label> <a href="{{ detail.website }}" target="_blank">{{ detail.website }}</a></div>{% endif %}
+      {% if detail.country %}<div><label>Country</label> {{ detail.country }}</div>{% endif %}
+      {% if detail.region %}<div><label>Region</label> {{ detail.region }}</div>{% endif %}
+      {% if detail.therapeutic_focus %}<div><label>Focus</label> {{ detail.therapeutic_focus }}</div>{% endif %}
+      {% if detail.owner %}<div><label>Owner</label> {{ detail.owner }}</div>{% endif %}
+      <div><label>Fit Score</label>
+        <span class="stars">{% for i in range(1,6) %}{% if i <= detail.strategic_fit_score %}★{% else %}☆{% endif %}{% endfor %}</span>
+      </div>
+    </div>
+  </div>
+  {% if detail.notes %}<div class="detail-notes">{{ detail.notes }}</div>{% endif %}
+</div>
+
+<div class="tabs" id="company-tabs">
+  <button class="tab-btn active" data-tab="contacts-tab">Contacts ({{ detail.contacts|length }})</button>
+  <button class="tab-btn" data-tab="opps-tab">Opportunities ({{ detail.opportunities|length }})</button>
+  <button class="tab-btn" data-tab="activities-tab">Activities ({{ detail.activities|length }})</button>
+  <button class="tab-btn" data-tab="followups-tab">Follow-ups ({{ detail.followups|length }})</button>
+  <button class="tab-btn" data-tab="docs-tab">Documents ({{ detail.doc_shares|length }})</button>
+</div>
+
+<div id="contacts-tab" class="tab-panel card">
+  <div class="card-header">
+    <h3 class="card-title">Contacts</h3>
+    <a href="/contacts/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Contact</a>
+  </div>
+  {% if detail.contacts %}
+  <table class="table table-sm">
+    <thead><tr><th>Name</th><th>Title</th><th>Email</th><th>Role</th><th>Relationship</th><th>NDA</th><th></th></tr></thead>
+    <tbody>
+      {% for c in detail.contacts %}
+      <tr>
+        <td><a href="/contacts/{{ c.id }}" class="link-primary">{{ c.first_name }} {{ c.last_name }}</a></td>
+        <td>{{ c.title or '—' }}</td>
+        <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}—{% endif %}</td>
+        <td><span class="badge role-{{ c.role_type }}">{{ c.role_type | replace('_',' ') if c.role_type else '—' }}</span></td>
+        <td><span class="badge rel-{{ c.relationship_strength }}">{{ c.relationship_strength }}</span></td>
+        <td><span class="badge nda-{{ c.nda_status }}">{{ c.nda_status }}</span></td>
+        <td><a href="/contacts/{{ c.id }}/edit" class="btn btn-ghost btn-sm">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><p>No contacts yet.</p><a href="/contacts/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Contact</a></div>
+  {% endif %}
+</div>
+
+<div id="opps-tab" class="tab-panel card hidden">
+  <div class="card-header">
+    <h3 class="card-title">Opportunities</h3>
+    <a href="/opportunities/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Opportunity</a>
+  </div>
+  {% if detail.opportunities %}
+  <table class="table table-sm">
+    <thead><tr><th>Name</th><th>Type</th><th>Stage</th><th>Priority</th><th>Probability</th><th>Est. Value</th><th></th></tr></thead>
+    <tbody>
+      {% for o in detail.opportunities %}
+      <tr>
+        <td><a href="/opportunities/{{ o.id }}" class="link-primary">{{ o.name }}</a></td>
+        <td>{{ o.opportunity_type | replace('_',' ') if o.opportunity_type else '—' }}</td>
+        <td><span class="badge stage-{{ o.stage }}">{{ o.stage | replace('_',' ') }}</span></td>
+        <td><span class="badge priority-{{ o.priority }}">{{ o.priority }}</span></td>
+        <td>{{ o.probability }}%</td>
+        <td>{{ o.estimated_value or '—' }}</td>
+        <td><a href="/opportunities/{{ o.id }}" class="btn btn-ghost btn-sm">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><p>No opportunities yet.</p><a href="/opportunities/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Opportunity</a></div>
+  {% endif %}
+</div>
+
+<div id="activities-tab" class="tab-panel card hidden">
+  <div class="card-header">
+    <h3 class="card-title">Activity Timeline</h3>
+    <a href="/activities/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Log Activity</a>
+  </div>
+  {% if detail.activities %}
+  <div class="timeline">
+    {% for a in detail.activities %}
+    <div class="timeline-item type-{{ a.activity_type }}">
+      <div class="timeline-meta">
+        <span class="text-mono">{{ a.activity_date }}</span>
+        <span class="badge type-{{ a.activity_type }}">{{ a.activity_type }}</span>
+        {% if a.sentiment != 'neutral' %}<span class="badge sentiment-{{ a.sentiment }}">{{ a.sentiment | replace('_',' ') }}</span>{% endif %}
+      </div>
+      <div class="timeline-subject">{{ a.subject or '(no subject)' }}</div>
+      {% if a.summary %}<div class="timeline-body">{{ a.summary }}</div>{% endif %}
+      {% if a.contact_name %}<div class="timeline-contact">Contact: {{ a.contact_name }}</div>{% endif %}
+      <div class="timeline-actions">
+        <form method="post" action="/activities/{{ a.id }}/delete" class="inline-form" data-confirm="Delete this activity?">
+          <input type="hidden" name="next_url" value="/companies/{{ detail.id }}">
+          <button class="btn btn-ghost btn-sm">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><p>No activities logged.</p><a href="/activities/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Log Activity</a></div>
+  {% endif %}
+</div>
+
+<div id="followups-tab" class="tab-panel card hidden">
+  <div class="card-header">
+    <h3 class="card-title">Follow-ups</h3>
+    <a href="/followups/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Follow-up</a>
+  </div>
+  {% if detail.followups %}
+  <table class="table table-sm">
+    <thead><tr><th>Due</th><th>Action</th><th>Priority</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for f in detail.followups %}
+      <tr class="{% if f.status == 'open' and f.due_date < today %}row-overdue{% endif %}">
+        <td class="text-mono">{{ f.due_date }}</td>
+        <td>{{ f.action }}</td>
+        <td><span class="badge priority-{{ f.priority }}">{{ f.priority }}</span></td>
+        <td><span class="badge status-{{ f.status }}">{{ f.status }}</span></td>
+        <td>
+          {% if f.status == 'open' %}
+          <form method="post" action="/followups/{{ f.id }}/complete" class="inline-form">
+            <button class="btn btn-outline btn-sm">✓ Done</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><p>No follow-ups.</p><a href="/followups/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Follow-up</a></div>
+  {% endif %}
+</div>
+
+<div id="docs-tab" class="tab-panel card hidden">
+  <div class="card-header">
+    <h3 class="card-title">Documents Shared</h3>
+    <a href="/documents" class="btn btn-outline btn-sm">Manage Docs</a>
+  </div>
+  {% if detail.doc_shares %}
+  <table class="table table-sm">
+    <thead><tr><th>Document</th><th>Type</th><th>Contact</th><th>Date Shared</th><th>NDA</th></tr></thead>
+    <tbody>
+      {% for ds in detail.doc_shares %}
+      <tr>
+        <td>{{ ds.document_name }}</td>
+        <td>{{ ds.document_type or '—' }}</td>
+        <td>{{ ds.contact_name or '—' }}</td>
+        <td class="text-mono">{{ ds.shared_date }}</td>
+        <td>{% if ds.shared_under_nda %}✓ NDA{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><p>No documents shared with this company yet.</p></div>
+  {% endif %}
+</div>
+
+{% endblock %}

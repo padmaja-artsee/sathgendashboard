@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Opportunities — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Opportunities</h1>
+  <div class="header-actions">
+    <button class="btn btn-outline btn-sm" id="toggle-view-btn">Switch to Pipeline View</button>
+    <a href="/opportunities/new" class="btn btn-primary">+ Add Opportunity</a>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <form method="get" class="filter-form">
+    <select name="stage" class="form-select">
+      <option value="">All Stages</option>
+      {% for val, label in [('initial_contact','Initial Contact'),('nda_negotiation','NDA Negotiation'),('due_diligence','Due Diligence'),('term_sheet','Term Sheet'),('negotiation','Negotiation'),('closed_won','Closed Won'),('closed_lost','Closed Lost'),('on_hold','On Hold')] %}
+      <option value="{{ val }}" {% if stage == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="priority" class="form-select">
+      <option value="">All Priorities</option>
+      {% for val in ['critical','high','medium','low'] %}
+      <option value="{{ val }}" {% if priority == val %}selected{% endif %}>{{ val | title }}</option>
+      {% endfor %}
+    </select>
+    <select name="status" class="form-select">
+      <option value="open" {% if status == 'open' %}selected{% endif %}>Open</option>
+      <option value="closed_won" {% if status == 'closed_won' %}selected{% endif %}>Closed Won</option>
+      <option value="closed_lost" {% if status == 'closed_lost' %}selected{% endif %}>Closed Lost</option>
+      <option value="" {% if status == '' %}selected{% endif %}>All</option>
+    </select>
+    <input type="hidden" name="view" value="{{ view }}">
+    <button type="submit" class="btn btn-outline">Filter</button>
+    <a href="/opportunities" class="btn btn-ghost">Clear</a>
+  </form>
+</div>
+
+<!-- Table View -->
+<div id="table-view" {% if view == 'pipeline' %}class="hidden"{% endif %}>
+  {% if opportunities %}
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr><th>Name</th><th>Company</th><th>Type</th><th>Asset</th><th>Stage</th><th>Priority</th><th>Prob.</th><th>Est. Value</th><th>Next Step Due</th><th>Owner</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for o in opportunities %}
+        <tr>
+          <td><a href="/opportunities/{{ o.id }}" class="link-primary">{{ o.name }}</a></td>
+          <td>{% if o.company_id %}<a href="/companies/{{ o.company_id }}">{{ o.company_name }}</a>{% else %}—{% endif %}</td>
+          <td>{{ o.opportunity_type | replace('_',' ') if o.opportunity_type else '—' }}</td>
+          <td>{{ o.asset_or_program or '—' }}</td>
+          <td><span class="badge stage-{{ o.stage }}">{{ o.stage | replace('_',' ') }}</span></td>
+          <td><span class="badge priority-{{ o.priority }}">{{ o.priority }}</span></td>
+          <td>{{ o.probability }}%</td>
+          <td>{{ o.estimated_value or '—' }}</td>
+          <td class="text-mono">{{ o.next_step_due_date or '—' }}</td>
+          <td>{{ o.owner or '—' }}</td>
+          <td class="actions">
+            <a href="/opportunities/{{ o.id }}/edit" class="btn btn-ghost btn-sm">Edit</a>
+            <form method="post" action="/opportunities/{{ o.id }}/delete" class="inline-form" data-confirm="Delete {{ o.name }}?">
+              <button class="btn btn-danger btn-sm">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state card">
+    <h3>No opportunities found</h3>
+    <a href="/opportunities/new" class="btn btn-primary">+ Add Opportunity</a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Pipeline View -->
+<div id="pipeline-view" {% if view != 'pipeline' %}class="hidden"{% endif %}>
+  <div class="kanban">
+    {% set stage_labels = {'initial_contact':'Initial Contact','nda_negotiation':'NDA Negotiation','due_diligence':'Due Diligence','term_sheet':'Term Sheet','negotiation':'Negotiation','closed_won':'Closed Won'} %}
+    {% for stage_key, label in stage_labels.items() %}
+    <div class="kanban-col">
+      <div class="kanban-header stage-{{ stage_key }}">{{ label }} <span class="kanban-count">{{ opp_by_stage.get(stage_key, [])|length }}</span></div>
+      {% for o in opp_by_stage.get(stage_key, []) %}
+      <a href="/opportunities/{{ o.id }}" class="kanban-card">
+        <div class="kanban-card-name">{{ o.name }}</div>
+        <div class="kanban-card-company">{{ o.company_name or '—' }}</div>
+        <div class="kanban-card-meta">
+          <span class="badge priority-{{ o.priority }}">{{ o.priority }}</span>
+          <span class="prob-badge">{{ o.probability }}%</span>
+        </div>
+      </a>
+      {% else %}
+      <div class="kanban-empty">No opportunities</div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

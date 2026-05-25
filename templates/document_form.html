@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Upload Document — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="/documents">Documents</a> / <span>New Document</span></div>
+  <h1>Upload Document</h1>
+</div>
+
+<div class="card form-card">
+  <form method="post" action="{{ action }}" enctype="multipart/form-data">
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Document Name <span class="required">*</span></label>
+        <input type="text" name="document_name" value="{{ document.document_name if document else '' }}" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Document Type</label>
+        <select name="document_type" class="form-select">
+          <option value="">— Select Type —</option>
+          {% for val, label in [('nda','NDA'),('pitch_deck','Pitch Deck'),('data_package','Data Package'),('term_sheet','Term Sheet'),('scientific_data','Scientific Data'),('other','Other')] %}
+          <option value="{{ val }}" {% if document and document.document_type == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Version</label>
+        <input type="text" name="version" value="{{ document.version if document else '1.0' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">File</label>
+        <input type="file" name="file" class="form-control">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea name="description" class="form-control" rows="3">{{ document.description if document else '' }}</textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Upload Document</button>
+      <a href="/documents" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

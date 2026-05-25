@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ document.document_name }} — Document Detail{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="/documents">Documents</a> / <span>{{ document.document_name }}</span></div>
+  <div class="header-actions">
+    {% if document.file_path %}<a href="/documents/{{ document.id }}/file" class="btn btn-outline btn-sm">↓ Download</a>{% endif %}
+    <a href="/documents/{{ document.id }}/share" class="btn btn-primary btn-sm">Share Document</a>
+    <form method="post" action="/documents/{{ document.id }}/delete" class="inline-form" data-confirm="Delete {{ document.document_name }}?">
+      <button class="btn btn-danger btn-sm">Delete</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="detail-meta-grid">
+    <div>
+      <h1 class="detail-name">{{ document.document_name }}</h1>
+      {% if document.document_type %}<span class="badge doc-{{ document.document_type }}">{{ document.document_type | replace('_',' ') | title }}</span>{% endif %}
+    </div>
+    <div class="detail-meta-list">
+      <div><label>Version</label> {{ document.version or '1.0' }}</div>
+      <div><label>Uploaded</label> {{ document.created_at[:10] }}</div>
+      {% if document.file_path %}<div><label>File</label> ✓ Attached</div>{% endif %}
+    </div>
+  </div>
+  {% if document.description %}
+  <div class="detail-notes mt-3">{{ document.description }}</div>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">
+    <h3 class="card-title">Sharing History ({{ shares|length }})</h3>
+    <a href="/documents/{{ document.id }}/share" class="btn btn-primary btn-sm">Share</a>
+  </div>
+  {% if shares %}
+  <table class="table">
+    <thead><tr><th>Shared To</th><th>Company</th><th>Opportunity</th><th>Date</th><th>NDA</th><th>Notes</th></tr></thead>
+    <tbody>
+      {% for s in shares %}
+      <tr>
+        <td>{{ s.contact_name or '—' }}</td>
+        <td>{{ s.company_name or '—' }}</td>
+        <td>{{ s.opportunity_name or '—' }}</td>
+        <td class="text-mono">{{ s.shared_date }}</td>
+        <td>{% if s.shared_under_nda %}✓ NDA{% else %}—{% endif %}</td>
+        <td>{{ s.notes or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><p>Not shared yet.</p><a href="/documents/{{ document.id }}/share" class="btn btn-primary btn-sm">Share Now</a></div>
+  {% endif %}
+</div>
+{% endblock %}

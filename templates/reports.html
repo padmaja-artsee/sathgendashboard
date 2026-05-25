@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Reports — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Reports &amp; Exports</h1>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.total_companies }}</div>
+    <div class="stat-label">Total Companies</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.total_contacts }}</div>
+    <div class="stat-label">Total Contacts</div>
+  </div>
+  <div class="stat-card stat-card-accent">
+    <div class="stat-value">{{ stats.active_opportunities }}</div>
+    <div class="stat-label">Active Opportunities</div>
+  </div>
+  <div class="stat-card stat-card-warning">
+    <div class="stat-value">{{ stats.followups_due_week }}</div>
+    <div class="stat-label">Follow-ups Due This Week</div>
+  </div>
+  <div class="stat-card stat-card-danger">
+    <div class="stat-value">{{ stats.overdue_followups }}</div>
+    <div class="stat-label">Overdue Follow-ups</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.nda_pending }}</div>
+    <div class="stat-label">NDAs Pending</div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header"><h2 class="card-title">Pipeline Summary by Stage</h2></div>
+  <table class="table">
+    <thead><tr><th>Stage</th><th>Opportunities</th></tr></thead>
+    <tbody>
+      {% set stage_labels = {'initial_contact':'Initial Contact','nda_negotiation':'NDA Negotiation','due_diligence':'Due Diligence','term_sheet':'Term Sheet','negotiation':'Negotiation','closed_won':'Closed Won','closed_lost':'Closed Lost','on_hold':'On Hold'} %}
+      {% for s in stage_summary %}
+      <tr>
+        <td><span class="badge stage-{{ s.stage }}">{{ stage_labels.get(s.stage, s.stage) }}</span></td>
+        <td>{{ s.count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header"><h2 class="card-title">Export to Excel</h2></div>
+  <div class="export-grid">
+    <div class="export-card">
+      <div class="export-icon">🏢</div>
+      <div class="export-name">Companies</div>
+      <a href="/reports/export/companies.xlsx" class="btn btn-outline btn-sm">Download .xlsx</a>
+    </div>
+    <div class="export-card">
+      <div class="export-icon">👤</div>
+      <div class="export-name">Contacts</div>
+      <a href="/reports/export/contacts.xlsx" class="btn btn-outline btn-sm">Download .xlsx</a>
+    </div>
+    <div class="export-card">
+      <div class="export-icon">📈</div>
+      <div class="export-name">Opportunities</div>
+      <a href="/reports/export/opportunities.xlsx" class="btn btn-outline btn-sm">Download .xlsx</a>
+    </div>
+    <div class="export-card">
+      <div class="export-icon">📋</div>
+      <div class="export-name">Activities</div>
+      <a href="/reports/export/activities.xlsx" class="btn btn-outline btn-sm">Download .xlsx</a>
+    </div>
+    <div class="export-card">
+      <div class="export-icon">✅</div>
+      <div class="export-name">Follow-ups</div>
+      <a href="/reports/export/followups.xlsx" class="btn btn-outline btn-sm">Download .xlsx</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

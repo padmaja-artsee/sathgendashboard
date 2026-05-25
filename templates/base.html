@@ -1,108 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}Leads{% endblock %} · Sathgen Therapeutics</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=1.2.0" />
-  {% block extra_css %}{% endblock %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Sathgen BD CRM{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="layout{% if hide_nav %} layout-full{% endif %}">
-    {% if not hide_nav %}
-    <aside class="sidebar no-print">
-      <div class="brand">
-        <img src="/static/logo.png" alt="Sathgen Therapeutics" class="brand-logo" onerror="this.style.display='none'"/>
-        <div class="brand-text">
-          <span class="brand-name">Sathgen Therapeutics</span>
-          <span class="brand-sub">Leads</span>
-        </div>
-      </div>
-      <div class="nav-section-label">Navigation</div>
-      <nav class="nav">
-        <a href="/" class="{% if page == 'dashboard' %}active{% endif %}">Dashboard</a>
-        <a href="/contacts" class="{% if page == 'contacts' %}active{% endif %}">Contacts</a>
-        <a href="/deals" class="{% if page == 'deals' %}active{% endif %}">Active leads</a>
-        <a href="/add?tab=log" class="{% if page == 'add' %}active{% endif %}">Add or update</a>
-        <a href="/summary" class="{% if page == 'summary' %}active{% endif %}">Summary</a>
-      </nav>
-      <div class="nav-footer-area">
-        <a href="/finance/" class="nav-finance-btn">Finance →</a>
-      </div>
-    </aside>
-    {% endif %}
-    <main class="main">
-      {% block content %}{% endblock %}
-    </main>
-  </div>
-
-  <!-- Confirmation modal (replaces window.confirm which is blocked in Tauri) -->
-  <div id="app-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:10px;padding:1.5rem 2rem;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);">
-      <p id="app-confirm-msg" style="margin:0 0 1.25rem;font-size:0.95rem;line-height:1.5;color:#1e293b;"></p>
-      <div style="display:flex;gap:.75rem;justify-content:flex-end;">
-        <button id="app-confirm-cancel" class="btn btn-ghost">Cancel</button>
-        <button id="app-confirm-ok" class="btn btn-danger">Delete</button>
-      </div>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-name">Sathgen</span>
+      <span class="brand-sub">BD Intelligence</span>
     </div>
-  </div>
-  <script>
-  (function () {
-    var overlay = document.getElementById('app-confirm-overlay');
-    var msgEl   = document.getElementById('app-confirm-msg');
-    var okBtn   = document.getElementById('app-confirm-ok');
-    var cancelBtn = document.getElementById('app-confirm-cancel');
-    var _resolve = null;
+    <nav class="sidebar-nav">
+      <a href="/" class="nav-link {% if page == 'dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/companies" class="nav-link {% if page == 'companies' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M9 21V8l6-5v18M3 21V10l6-2"/></svg>
+        Companies
+      </a>
+      <a href="/contacts" class="nav-link {% if page == 'contacts' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Contacts
+      </a>
+      <a href="/opportunities" class="nav-link {% if page == 'opportunities' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Opportunities
+      </a>
+      <a href="/activities" class="nav-link {% if page == 'activities' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Activities
+      </a>
+      <a href="/followups" class="nav-link {% if page == 'followups' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Follow-ups
+      </a>
+      <a href="/documents" class="nav-link {% if page == 'documents' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        Documents
+      </a>
+      <a href="/reports" class="nav-link {% if page == 'reports' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Reports
+      </a>
+      <div class="nav-divider"></div>
+      <a href="/finance/" class="nav-link nav-link-finance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
+        Finance
+      </a>
+    </nav>
+  </aside>
 
-    function showConfirm(msg, okLabel) {
-      msgEl.textContent = msg;
-      okBtn.textContent = okLabel || 'Delete';
-      overlay.style.display = 'flex';
-      return new Promise(function (resolve) { _resolve = resolve; });
-    }
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
 
-    okBtn.addEventListener('click', function () {
-      overlay.style.display = 'none';
-      if (_resolve) { _resolve(true); _resolve = null; }
-    });
-    cancelBtn.addEventListener('click', function () {
-      overlay.style.display = 'none';
-      if (_resolve) { _resolve(false); _resolve = null; }
-    });
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) {
-        overlay.style.display = 'none';
-        if (_resolve) { _resolve(false); _resolve = null; }
-      }
-    });
-
-    // Intercept any form/button with data-confirm attribute.
-    document.addEventListener('submit', function (e) {
-      var form = e.target;
-      var msg = form.getAttribute('data-confirm');
-      if (!msg) return;
-      e.preventDefault();
-      showConfirm(msg, form.getAttribute('data-confirm-ok') || 'Delete').then(function (ok) {
-        if (ok) form.submit();
-      });
-    }, true);
-
-    document.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-confirm-click]');
-      if (!btn) return;
-      var msg = btn.getAttribute('data-confirm-click');
-      e.preventDefault();
-      showConfirm(msg, btn.getAttribute('data-confirm-ok') || 'Delete').then(function (ok) {
-        if (ok) {
-          var form = btn.closest('form');
-          if (form) form.submit();
-          else if (btn.tagName === 'A') window.location = btn.href;
-        }
-      });
-    }, true);
-  })();
-  </script>
+  <script src="/static/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if contact else 'New' }} Contact — Sathgen BD CRM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="/contacts">Contacts</a> / <span>{{ 'Edit' if contact else 'New Contact' }}</span></div>
+  <h1>{{ 'Edit Contact' if contact else 'Add Contact' }}</h1>
+</div>
+
+<div class="card form-card">
+  <form method="post" action="{{ action }}">
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">First Name</label>
+        <input type="text" name="first_name" value="{{ contact.first_name if contact else '' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Last Name</label>
+        <input type="text" name="last_name" value="{{ contact.last_name if contact else '' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Company</label>
+        <select name="company_id" class="form-select" id="contact-company-select">
+          <option value="">— No Company —</option>
+          {% for c in companies %}
+          <option value="{{ c.id }}"
+            {% if contact and contact.company_id == c.id %}selected
+            {% elif not contact and preset_company_id == c.id|string %}selected
+            {% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title / Role</label>
+        <input type="text" name="title" value="{{ contact.title if contact else '' }}" class="form-control" placeholder="e.g. VP Business Development">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" value="{{ contact.email if contact else '' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="tel" name="phone" value="{{ contact.phone if contact else '' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">LinkedIn</label>
+        <input type="url" name="linkedin" value="{{ contact.linkedin if contact else '' }}" class="form-control" placeholder="https://linkedin.com/in/…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role Type</label>
+        <select name="role_type" class="form-select">
+          <option value="">— Select Role —</option>
+          {% for val, label in [('decision_maker','Decision Maker'),('champion','Champion'),('influencer','Influencer'),('gatekeeper','Gatekeeper'),('technical','Technical')] %}
+          <option value="{{ val }}" {% if contact and contact.role_type == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Relationship Strength</label>
+        <select name="relationship_strength" class="form-select">
+          {% for val in ['cold','warm','strong','advocate'] %}
+          <option value="{{ val }}" {% if contact and contact.relationship_strength == val %}selected{% elif not contact and val == 'warm' %}selected{% endif %}>{{ val | title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Source</label>
+        <select name="source" class="form-select">
+          <option value="">— Select Source —</option>
+          {% for val in ['conference','referral','linkedin','inbound','other'] %}
+          <option value="{{ val }}" {% if contact and contact.source == val %}selected{% endif %}>{{ val | title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">First Contact Date</label>
+        <input type="date" name="first_contact_date" value="{{ contact.first_contact_date if contact else '' }}" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">NDA Status</label>
+        <select name="nda_status" class="form-select">
+          {% for val in ['none','sent','signed','expired'] %}
+          <option value="{{ val }}" {% if contact and contact.nda_status == val %}selected{% elif not contact and val == 'none' %}selected{% endif %}>{{ val | title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea name="notes" class="form-control" rows="4">{{ contact.notes if contact else '' }}</textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{{ 'Save Changes' if contact else 'Create Contact' }}</button>
+      <a href="{{ '/contacts/' + contact.id|string if contact else '/contacts' }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
