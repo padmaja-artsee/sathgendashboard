@@ -68,7 +68,8 @@ SECTION_STYLES = {
     "Total Admin":             "subtotal",
     "Total Travel":            "subtotal",
     "Total Expenses":          "highlight",
-    "Balance": "total",
+    "Balance":                 "total",
+    "Cash Position":           "cash",
 }
 
 
@@ -88,20 +89,23 @@ def _fmt_date(d: str) -> str:
 templates.env.filters["fmtdate"] = _fmt_date
 
 
-def _build_rows(grid: dict, items: list[dict]) -> list[dict]:
-    full = compute_grid(grid, items)
+def _build_rows(grid: dict, items: list[dict], opening_balance: float = 0.0) -> list[dict]:
+    full = compute_grid(grid, items, opening_balance)
     by_name = {i["name"]: i["id"] for i in items}
     rows = []
     for item in items:
         lid = item["id"]
         monthly = {m: full.get((lid, m), 0.0) for m in FY_MONTHS}
         if item["name"] == "Balance":
-            # Compute as Total Income total − Total Expenses total (not sum of monthly cells)
+            # Annual total = Total Income − Total Expenses
             inc_lid = by_name.get("Total Income")
             exp_lid = by_name.get("Total Expenses")
             inc_tot = sum(full.get((inc_lid, m), 0) for m in FY_MONTHS) if inc_lid else 0
             exp_tot = sum(full.get((exp_lid, m), 0) for m in FY_MONTHS) if exp_lid else 0
             total = inc_tot - exp_tot
+        elif item["name"] == "Cash Position":
+            # Total = year-end cash position (March = last month of FY)
+            total = full.get((lid, 3), 0)
         else:
             total = sum(monthly.values())
         rows.append({
@@ -111,13 +115,13 @@ def _build_rows(grid: dict, items: list[dict]) -> list[dict]:
     return rows
 
 
-def _combined_actuals(fiscal_year: int, items: list[dict]) -> dict:
+def _combined_actuals(fiscal_year: int, items: list[dict], opening_balance: float = 0.0) -> dict:
     rollup = get_transaction_rollup(fiscal_year)
     manual = get_actuals_manual(fiscal_year)
     combined = {}
     for k in set(list(rollup.keys()) + list(manual.keys())):
         combined[k] = rollup.get(k, 0) + manual.get(k, 0)
-    return compute_grid(combined, items)
+    return compute_grid(combined, items, opening_balance)
 
 
 def _or_none(v: str):
@@ -178,7 +182,8 @@ async def budget_page(
     if not fy: fy = fys[0]
     items = list_line_items()
     grid  = get_budget_grid(fy)
-    rows  = _build_rows(grid, items)
+    ob    = get_opening_balance(fy)
+    rows  = _build_rows(grid, items, ob)
     archived = is_archived(fy)
     # Group rows by section for template
     sections = []
@@ -309,16 +314,27 @@ async def actuals_page(request: Request, fy: int = Query(0), saved: int = Query(
     opening_balance = get_opening_balance(fy)
     full = compute_grid(combined, items, opening_balance)
 
+    by_name = {i["name"]: i["id"] for i in items}
     rows = []
     for item in items:
         lid = item["id"]
         monthly_r = {m: rollup.get((lid, m), 0.0)  for m in FY_MONTHS}
         monthly_m = {m: manual.get((lid, m), 0.0)  for m in FY_MONTHS}
         monthly_t = {m: full.get((lid, m), 0.0)    for m in FY_MONTHS}
+        if item["name"] == "Balance":
+            inc_lid = by_name.get("Total Income")
+            exp_lid = by_name.get("Total Expenses")
+            inc_tot = sum(full.get((inc_lid, m), 0) for m in FY_MONTHS) if inc_lid else 0
+            exp_tot = sum(full.get((exp_lid, m), 0) for m in FY_MONTHS) if exp_lid else 0
+            total = inc_tot - exp_tot
+        elif item["name"] == "Cash Position":
+            total = full.get((lid, 3), 0)  # March year-end position
+        else:
+            total = sum(monthly_t.values())
         rows.append({
             "item": item, "monthly_r": monthly_r,
             "monthly_m": monthly_m, "monthly_t": monthly_t,
-            "total": sum(monthly_t.values()),
+            "total": total,
             "style": SECTION_STYLES.get(item["name"], ""),
         })
 

@@ -119,8 +119,9 @@ LINE_ITEMS_SEED = [
     ("travel",   "Car Rental",                0, 1, 25),
     ("travel",   "Total Travel",              1, 1, 99),
     # ── Grand totals ────────────────────────────────────────────────────────
-    ("totals",   "Total Expenses",            1, 1, 10),
-    ("totals",   "Balance",   1, 1, 20),
+    ("totals",   "Total Expenses",  1, 1, 10),
+    ("totals",   "Balance",         1, 1, 20),
+    ("totals",   "Cash Position",   1, 1, 30),
 ]
 
 # Items added after initial release — used by the migration to patch existing DBs
@@ -399,6 +400,11 @@ def _run_migrations(conn) -> None:
     conn.execute(
         "UPDATE line_items SET name='Balance' WHERE name='Net (Income - Expenses)' AND section='totals'"
     )
+    # Add "Cash Position" if missing
+    conn.execute(
+        "INSERT OR IGNORE INTO line_items (section,name,is_calculated,is_system,sort_order) "
+        "VALUES ('totals','Cash Position',1,1,30)"
+    )
 
     # 1. Add missing line items (INSERT OR IGNORE respects UNIQUE(section,name))
     conn.executemany(
@@ -522,7 +528,8 @@ def save_actuals_manual(fiscal_year: int, values: dict) -> None:
 
 def compute_grid(raw: dict, items: list[dict], opening_balance: float = 0.0) -> dict:
     """Add calculated rows to a raw {(lid,month): amount} grid.
-    opening_balance is added once to the first month's Net."""
+    Balance = monthly (income - expenses).
+    Cash Position = opening_balance + cumulative Balance (running bank balance)."""
     result = dict(raw)
     by_name = {i["name"]: i["id"] for i in items}
 
@@ -533,6 +540,7 @@ def compute_grid(raw: dict, items: list[dict], opening_balance: float = 0.0) -> 
             if i["section"] == section and not i["is_calculated"]
         )
 
+    cash = opening_balance
     for month in FY_MONTHS:
         ti  = sec_sum("income",   month)
         tec = sec_sum("employee", month)
@@ -540,16 +548,18 @@ def compute_grid(raw: dict, items: list[dict], opening_balance: float = 0.0) -> 
         tad = sec_sum("admin",    month)
         ttr = sec_sum("travel",   month)
         tex = tec + toc + tad + ttr
-        net = ti - tex  # monthly net only — opening balance shown separately
+        net = ti - tex          # monthly balance (income − expenses)
+        cash = cash + net       # running cash position
 
         for name, val in [
-            ("Total Income",            ti),
-            ("Total Employee Costs",    tec),
-            ("Total Office Costs",      toc),
-            ("Total Admin",             tad),
-            ("Total Travel",            ttr),
-            ("Total Expenses",          tex),
-            ("Balance", net),
+            ("Total Income",         ti),
+            ("Total Employee Costs", tec),
+            ("Total Office Costs",   toc),
+            ("Total Admin",          tad),
+            ("Total Travel",         ttr),
+            ("Total Expenses",       tex),
+            ("Balance",              net),
+            ("Cash Position",        cash),
         ]:
             if name in by_name:
                 result[(by_name[name], month)] = val

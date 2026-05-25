@@ -165,7 +165,7 @@ const SECTIONS = {
   travel:   ['Total Travel'],
 };
 const CALC_NAMES = ['Total Income','Total Employee Costs','Total Office Costs',
-                    'Total Admin','Total Travel','Total Expenses','Balance'];
+                    'Total Admin','Total Travel','Total Expenses','Balance','Cash Position'];
 // Build lid maps
 const items = {{ items | tojson }};
 const nameToLid = {};
@@ -182,6 +182,7 @@ function secItems(sec) { return items.filter(i=>i.section===sec && !i.is_calcula
 function fmt(v) { return v===0?'—':'$'+Math.round(v).toLocaleString(); }
 
 function recalc() {
+  let cash = OPENING_BALANCE;
   months.forEach(m => {
     let ti=0,tec=0,toc=0,tad=0,ttr=0;
     secItems('income').forEach(i=>ti+=getVal(i.id,m));
@@ -190,9 +191,11 @@ function recalc() {
     secItems('admin').forEach(i=>tad+=getVal(i.id,m));
     secItems('travel').forEach(i=>ttr+=getVal(i.id,m));
     const tex=tec+toc+tad+ttr;
-    const net=ti-tex;  // monthly net — opening balance shown separately above
+    const net=ti-tex;   // monthly balance (income − expenses this month)
+    cash = cash + net;  // running cash position = opening + cumulative
     const map={'Total Income':ti,'Total Employee Costs':tec,'Total Office Costs':toc,
-               'Total Admin':tad,'Total Travel':ttr,'Total Expenses':tex,'Balance':net};
+               'Total Admin':tad,'Total Travel':ttr,'Total Expenses':tex,
+               'Balance':net,'Cash Position':cash};
     Object.entries(map).forEach(([name,val])=>{
       const lid=nameToLid[name];
       if(!lid) return;
@@ -219,8 +222,12 @@ function recalc() {
     if(!lid) return;
     let tot;
     if(name==='Balance'){
-      // Compute directly as Total Income - Total Expenses (not sum of monthly cells)
       tot = getCtot('Total Income') - getCtot('Total Expenses');
+    } else if(name==='Cash Position'){
+      // Year-end position = March cell value (last month of FY)
+      const lastM = months[months.length-1];
+      const lastEl = document.getElementById(`calc_${lid}_${lastM}`);
+      tot = lastEl ? (parseFloat(lastEl.textContent.replace(/[$,—]/g,''))||0) : 0;
     } else {
       tot = months.reduce((s,m)=>{
         const el=document.getElementById(`calc_${lid}_${m}`);
