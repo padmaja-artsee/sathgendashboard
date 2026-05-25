@@ -89,6 +89,15 @@ def _fmt_date(d: str) -> str:
 templates.env.filters["fmtdate"] = _fmt_date
 
 
+def _budget_val(v):
+    """Format a budget cell value for an input: blank if 0, int if whole number."""
+    if not v:
+        return ""
+    return str(int(v)) if v == int(v) else str(round(v, 2))
+
+templates.env.filters["budget_val"] = _budget_val
+
+
 def _build_rows(grid: dict, items: list[dict], opening_balance: float = 0.0) -> list[dict]:
     full = compute_grid(grid, items, opening_balance)
     by_name = {i["name"]: i["id"] for i in items}

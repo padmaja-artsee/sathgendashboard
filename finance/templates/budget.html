@@ -84,7 +84,7 @@
         {% else %}
           <input type="number" step="0.01" min="0"
                  name="{{ row.item.id }}_{{ m }}"
-                 value="{{ row.monthly[m] | round(2) if row.monthly[m] else '' }}"
+                 value="{{ row.monthly[m] | budget_val }}"
                  class="f-cell-input" data-lid="{{ row.item.id }}" data-month="{{ m }}"
                  placeholder="0"/>
         {% endif %}
