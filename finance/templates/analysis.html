@@ -45,14 +45,16 @@
 <!-- ── Filter bar ── -->
 <div class="f-filter-bar" style="margin-top:1.5rem">
   <div class="f-filter-group">
-    <label class="f-filter-label">Category</label>
+    <label class="f-filter-label">View</label>
     <select id="filterCategory" class="f-select-sm" onchange="onCategoryChange()">
-      <option value="all">All Categories</option>
+      <option value="net">Net (Income − Expenses)</option>
       <option value="income">Income</option>
-      <option value="employee">Employee Costs</option>
-      <option value="office">Office Costs</option>
-      <option value="admin">Bank / Legal / Admin</option>
-      <option value="travel">Conference / Travel</option>
+      <option value="expenses">Total Expenses</option>
+      <option value="employee">↳ Employee Costs</option>
+      <option value="office">↳ Office Costs</option>
+      <option value="admin">↳ Bank / Legal / Admin</option>
+      <option value="travel">↳ Conference / Travel</option>
+      <option value="balance">Balance (Cumulative)</option>
     </select>
   </div>
   <div class="f-filter-group">
@@ -131,8 +133,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 const MONTHS      = {{ chart_months | tojson }};
-const LINE_DATA   = {{ line_data_json }};
-const SEC_TOTALS  = {{ section_totals_json }};
+const LINE_DATA   = {{ line_data_json | safe }};
+const SEC_TOTALS  = {{ section_totals_json | safe }};
 const ALL_ITEMS   = {{ items | tojson }};
 
 const SECTION_LABELS = {
@@ -148,17 +150,24 @@ const PIE_COLORS = [
 let chartType   = "bar";
 let mainChartObj, netChartObj, breakdownObj;
 
+const EXPENSE_SECTIONS = ["employee","office","admin","travel"];
+
 function onCategoryChange() {
   const cat = document.getElementById("filterCategory").value;
   const sel = document.getElementById("filterLineItem");
   sel.innerHTML = '<option value="all">All Line Items</option>';
-  ALL_ITEMS
-    .filter(i => cat === "all" || i.section === cat)
-    .forEach(i => {
-      const opt = document.createElement("option");
-      opt.value = i.id; opt.textContent = i.name;
-      sel.appendChild(opt);
-    });
+  // Only populate line-item dropdown for single-section views
+  const singleSection = EXPENSE_SECTIONS.includes(cat) || cat === "income";
+  if (singleSection) {
+    ALL_ITEMS
+      .filter(i => i.section === cat)
+      .forEach(i => {
+        const opt = document.createElement("option");
+        opt.value = i.id; opt.textContent = i.name;
+        sel.appendChild(opt);
+      });
+  }
+  sel.disabled = !singleSection;
   renderCharts();
 }
 
@@ -173,83 +182,123 @@ function setChartType(type, btn) {
   renderCharts();
 }
 
-function getFilteredData() {
-  const cat  = document.getElementById("filterCategory").value;
-  const item = document.getElementById("filterLineItem").value;
-
+// Returns monthly arrays summed over the given sections/item filter
+function sumMonthly(sections, itemId) {
   let budget = new Array(12).fill(0);
   let actual = new Array(12).fill(0);
-  let label  = "All Categories";
-
-  const entries = Object.entries(LINE_DATA).filter(([id, d]) => {
-    if (cat !== "all" && d.section !== cat) return false;
-    if (item !== "all" && String(id) !== String(item)) return false;
-    return true;
-  });
-
-  entries.forEach(([id, d]) => {
+  Object.entries(LINE_DATA).forEach(([id, d]) => {
+    if (!sections.includes(d.section)) return;
+    if (itemId !== "all" && String(id) !== String(itemId)) return;
     d.budget.forEach((v, i) => budget[i] += v);
     d.actual.forEach((v, i) => actual[i] += v);
   });
-
-  if (item !== "all") {
-    const found = ALL_ITEMS.find(i => String(i.id) === String(item));
-    label = found ? found.name : label;
-  } else if (cat !== "all") {
-    label = SECTION_LABELS[cat] || cat;
-  }
-
-  return { budget, actual, label };
+  return { budget, actual };
 }
 
 function getNetData() {
-  // Cumulative net: sum(income) - sum(expenses) per month, running
-  let incomeActual  = new Array(12).fill(0);
-  let expenseActual = new Array(12).fill(0);
-  Object.entries(LINE_DATA).forEach(([id, d]) => {
+  let incActual = new Array(12).fill(0);
+  let expActual = new Array(12).fill(0);
+  Object.values(LINE_DATA).forEach(d => {
     if (d.section === "income")
-      d.actual.forEach((v, i) => incomeActual[i] += v);
+      d.actual.forEach((v, i) => incActual[i] += v);
     else
-      d.actual.forEach((v, i) => expenseActual[i] += v);
+      d.actual.forEach((v, i) => expActual[i] += v);
   });
   let running = 0;
   return MONTHS.map((_, i) => {
-    running += incomeActual[i] - expenseActual[i];
+    running += incActual[i] - expActual[i];
     return running;
   });
 }
 
+function buildDatasets(cat, item) {
+  const ctype = chartType === "line" ? "line" : "bar";
+  const lineOpts = { fill: false, tension: .35 };
+
+  if (cat === "net") {
+    // Four series: Income Budget, Income Actual, Expense Budget, Expense Actual
+    const inc = sumMonthly(["income"], "all");
+    const exp = sumMonthly(EXPENSE_SECTIONS, "all");
+    return [
+      { label:"Income Budget",   data:inc.budget, backgroundColor:"rgba(28,86,49,.2)",  borderColor:"#1C5631", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+      { label:"Income Actual",   data:inc.actual, backgroundColor:"rgba(28,86,49,.6)",  borderColor:"#134023", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+      { label:"Expense Budget",  data:exp.budget, backgroundColor:"rgba(192,57,43,.2)", borderColor:"#C0392B", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+      { label:"Expense Actual",  data:exp.actual, backgroundColor:"rgba(192,57,43,.6)", borderColor:"#96281B", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+    ];
+  }
+
+  const sections = cat === "expenses" ? EXPENSE_SECTIONS : [cat];
+  const { budget, actual } = sumMonthly(sections, item);
+  return [
+    { label:"Budget",  data:budget, backgroundColor:"rgba(28,86,49,.25)",  borderColor:"#1C5631", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+    { label:"Actuals", data:actual, backgroundColor:"rgba(192,57,43,.35)", borderColor:"#C0392B", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+  ];
+}
+
+function getChartTitle(cat, item) {
+  if (cat === "net")     return "Monthly Income vs Expenses";
+  if (cat === "balance") return "Cumulative Balance (Running Net)";
+  if (item !== "all") {
+    const found = ALL_ITEMS.find(i => String(i.id) === String(item));
+    return `Monthly — ${found ? found.name : ""}`;
+  }
+  const labels = { expenses:"Total Expenses", employee:"Employee Costs",
+                   office:"Office Costs", admin:"Bank/Legal/Admin", travel:"Conference/Travel" };
+  return `Monthly — ${labels[cat] || SECTION_LABELS[cat] || cat}`;
+}
+
 function renderCharts() {
   if (chartType === "pie") { renderBreakdown(); return; }
-  const { budget, actual, label } = getFilteredData();
+  const cat  = document.getElementById("filterCategory").value;
+  const item = document.getElementById("filterLineItem").value;
 
-  document.getElementById("mainChartTitle").textContent =
-    `Monthly Budget vs Actuals — ${label}`;
+  const net = getNetData();
 
+  if (cat === "balance") {
+    // Balance view: main chart IS the cumulative net; hide secondary net chart
+    document.getElementById("mainChartTitle").textContent = getChartTitle(cat, item);
+    document.getElementById("netChartCard").style.display = "none";
+
+    if (mainChartObj) mainChartObj.destroy();
+    mainChartObj = new Chart(document.getElementById("mainChart"), {
+      type: chartType,
+      data: {
+        labels: MONTHS,
+        datasets: [{
+          label: "Cumulative Balance",
+          data: net,
+          borderColor: "#1C5631", backgroundColor: "rgba(28,86,49,.12)",
+          borderWidth: 2.5, fill: chartType === "line", tension: .4,
+          pointBackgroundColor: net.map(v => v >= 0 ? "#1C5631" : "#C0392B"),
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "bottom" } },
+        scales: { y: { ticks: { callback: v => "$" + v.toLocaleString() } } }
+      }
+    });
+    if (netChartObj) { netChartObj.destroy(); netChartObj = null; }
+    return;
+  }
+
+  // All other views: main chart + cumulative net below
+  document.getElementById("netChartCard").style.display = "";
+  document.getElementById("mainChartTitle").textContent = getChartTitle(cat, item);
+
+  const datasets = buildDatasets(cat, item);
   if (mainChartObj) mainChartObj.destroy();
   mainChartObj = new Chart(document.getElementById("mainChart"), {
     type: chartType,
-    data: {
-      labels: MONTHS,
-      datasets: [
-        { label: "Budget",  data: budget,
-          backgroundColor: "rgba(28,86,49,.25)", borderColor: "#1C5631", borderWidth: 2,
-          fill: chartType === "line" ? false : true, tension: .35 },
-        { label: "Actuals", data: actual,
-          backgroundColor: "rgba(192,57,43,.35)", borderColor: "#C0392B", borderWidth: 2,
-          fill: chartType === "line" ? false : true, tension: .35 },
-      ]
-    },
+    data: { labels: MONTHS, datasets },
     options: {
       responsive: true,
       plugins: { legend: { position: "bottom" } },
-      scales: { y: { beginAtZero: true,
-        ticks: { callback: v => "$" + v.toLocaleString() } } }
+      scales: { y: { beginAtZero: true, ticks: { callback: v => "$" + v.toLocaleString() } } }
     }
   });
 
-  // Net trend
-  const net = getNetData();
   if (netChartObj) netChartObj.destroy();
   netChartObj = new Chart(document.getElementById("netChart"), {
     type: "line",
@@ -272,13 +321,17 @@ function renderCharts() {
 }
 
 function renderBreakdown() {
+  const cat  = document.getElementById("filterCategory").value;
   const item = document.getElementById("filterLineItem").value;
 
-  let labels = [], dataB = [], dataA = [], colors = [];
+  let labels = [], dataA = [], colors = [];
   let idx = 0;
 
-  if (item !== "all") {
-    // Single line item — show monthly actuals as pie slices
+  const isSingleItem = item !== "all";
+  const isSingleSection = EXPENSE_SECTIONS.includes(cat) || cat === "income";
+
+  if (isSingleItem) {
+    // Monthly actuals for one line item as pie slices
     const d = LINE_DATA[item];
     if (d) {
       MONTHS.forEach((m, i) => {
@@ -288,10 +341,23 @@ function renderBreakdown() {
         }
       });
     }
+  } else if (isSingleSection) {
+    // Line items within this section
+    Object.entries(LINE_DATA)
+      .filter(([, d]) => d.section === cat)
+      .forEach(([, d]) => {
+        const total = d.actual.reduce((a, b) => a + b, 0);
+        if (total > 0) {
+          labels.push(d.name); dataA.push(total);
+          colors.push(PIE_COLORS[idx++ % PIE_COLORS.length]);
+        }
+      });
   } else {
-    // Section breakdown — YTD actuals per section
+    // Section breakdown — expense sections only (income shown separately)
+    const sectionsToShow = cat === "net" || cat === "expenses"
+      ? EXPENSE_SECTIONS : [cat];
     Object.entries(SEC_TOTALS)
-      .filter(([sec]) => sec !== "income")
+      .filter(([sec]) => sectionsToShow.includes(sec))
       .forEach(([sec, d]) => {
         const total = d.actual.reduce((a, b) => a + b, 0);
         if (total > 0) {

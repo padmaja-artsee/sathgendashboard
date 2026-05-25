@@ -72,7 +72,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
-const snapData = {{ snap.grid_json }};
+const snapData = {{ snap.grid_json | safe }};
 const months   = {{ chart_months | tojson }};
 const FY_MONTHS = {{ fy_months | tojson }};
 
