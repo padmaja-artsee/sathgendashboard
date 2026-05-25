@@ -58,7 +58,7 @@ def generate_budget_template(items: list[dict], fiscal_year: int) -> tuple[bytes
     # Title
     ws.merge_cells(f"B1:{get_column_letter(ncols)}1")
     c = ws["B1"]
-    c.value = f"Godavari Biorefineries Inc"
+    c.value = f"Sathgen Therapeutics"
     c.font = _f(bold=True, size=12, color=_WHITE)
     c.fill = _fill(_GREEN)
     c.alignment = _al(h="left")
@@ -145,7 +145,7 @@ def generate_budget_template(items: list[dict], fiscal_year: int) -> tuple[bytes
     pass  # left blank for user totals
 
     ws.freeze_panes = "C5"
-    fname = f"GBInc-Budget-Template-FY{fiscal_year}.xlsx"
+    fname = f"Sathgen-Budget-Template-FY{fiscal_year}.xlsx"
     buf = BytesIO()
     wb.save(buf)
     return buf.getvalue(), fname
@@ -210,7 +210,7 @@ def parse_budget_upload(file_bytes: bytes, items: list[dict]) -> dict:
 
 def _grid_header(ws, title: str, subtitle: str, ncols: int) -> None:
     ws.merge_cells(f"A1:{get_column_letter(ncols)}1")
-    c = ws["A1"]; c.value = "Godavari Biorefineries Inc"
+    c = ws["A1"]; c.value = "Sathgen Therapeutics"
     c.font = _f(bold=True, size=12, color=_WHITE); c.fill = _fill(_GREEN)
     c.alignment = _al(h="left"); ws.row_dimensions[1].height = 20
 
@@ -312,7 +312,7 @@ def export_budget_xlsx(items: list, fiscal_year: int) -> tuple:
         f"Budget — FY{fiscal_year}",
         f"Apr {fiscal_year-1} – Mar {fiscal_year}")
     buf = BytesIO(); wb.save(buf)
-    return buf.getvalue(), f"GBInc-Budget-FY{fiscal_year}.xlsx"
+    return buf.getvalue(), f"Sathgen-Budget-FY{fiscal_year}.xlsx"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -331,7 +331,7 @@ def export_actuals_xlsx(items: list, fiscal_year: int) -> tuple:
         f"Actuals — FY{fiscal_year}",
         f"Apr {fiscal_year-1} – Mar {fiscal_year}")
     buf = BytesIO(); wb.save(buf)
-    return buf.getvalue(), f"GBInc-Actuals-FY{fiscal_year}.xlsx"
+    return buf.getvalue(), f"Sathgen-Actuals-FY{fiscal_year}.xlsx"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -421,7 +421,7 @@ def export_variances_xlsx(items: list, fiscal_year: int) -> tuple:
 
     ws.freeze_panes = "B7"
     buf = BytesIO(); wb.save(buf)
-    return buf.getvalue(), f"GBInc-Variances-FY{fiscal_year}.xlsx"
+    return buf.getvalue(), f"Sathgen-Variances-FY{fiscal_year}.xlsx"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -473,7 +473,7 @@ def export_transactions_xlsx(transactions: list, fiscal_year: int,
     c.number_format = "#,##0.00"; c.alignment = _al(h="right"); c.border = _border()
 
     ws.freeze_panes = "A6"
-    fname = f"GBInc-{'Income' if tx_type=='income' else 'Expenses'}-FY{fiscal_year}.xlsx"
+    fname = f"Sathgen-{'Income' if tx_type=='income' else 'Expenses'}-FY{fiscal_year}.xlsx"
     buf = BytesIO(); wb.save(buf)
     return buf.getvalue(), fname
 
@@ -485,7 +485,7 @@ def export_transactions_xlsx(transactions: list, fiscal_year: int,
 def export_vendors_xlsx(vendors: list) -> tuple:
     wb = openpyxl.Workbook()
     ws = wb.active; ws.title = "Vendors"
-    _grid_header(ws, "Vendors", "Godavari Biorefineries Inc", 5)
+    _grid_header(ws, "Vendors", "Sathgen Therapeutics", 5)
 
     for i, h in enumerate(["Name","Email","Phone","Notes","ID"], 1):
         c = ws.cell(5, i, h)
@@ -505,7 +505,7 @@ def export_vendors_xlsx(vendors: list) -> tuple:
             ws.row_dimensions[r].height = 13
 
     buf = BytesIO(); wb.save(buf)
-    return buf.getvalue(), "GBInc-Vendors.xlsx"
+    return buf.getvalue(), "Sathgen-Vendors.xlsx"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -529,7 +529,7 @@ def export_report_xlsx(
 
     # ── Header rows ───────────────────────────────────────────────────────────
     ws.merge_cells("A1:D1")
-    c = ws["A1"]; c.value = "Godavari Biorefineries Inc"
+    c = ws["A1"]; c.value = "Sathgen Therapeutics"
     c.font = _f(bold=True, size=13, color=_WHITE); c.fill = _fill(_GREEN_D)
     c.alignment = _al(h="left"); ws.row_dimensions[1].height = 22
 
@@ -636,7 +636,7 @@ def export_report_xlsx(
     _money(ws, row, 4, net_actual - net_budget, bold=True, fill=_GREEN_L)
 
     ws.freeze_panes = "B4"
-    fname = f"GBInc-PnL-FY{fiscal_year}.xlsx"
+    fname = f"Sathgen-PnL-FY{fiscal_year}.xlsx"
     buf = BytesIO(); wb.save(buf)
     return buf.getvalue(), fname
 
@@ -653,7 +653,7 @@ def export_analysis_xlsx(summary: list, chart_months: list,
     # ── Sheet 1: Section Summary ───────────────────────────────────────────
     ws1 = wb.active; ws1.title = "Summary"
     _grid_header(ws1, f"Budget vs Actuals Summary — FY{fiscal_year}",
-                 "Godavari Biorefineries Inc", 5)
+                 "Sathgen Therapeutics", 5)
 
     for ci, h in enumerate(["Section", "Planned", "Actual", "Variance", "Variance %"], 1):
         c = ws1.cell(5, ci, h)
@@ -680,7 +680,7 @@ def export_analysis_xlsx(summary: list, chart_months: list,
     # ── Sheet 2: Monthly Expenses ──────────────────────────────────────────
     ws2 = wb.create_sheet("Monthly Expenses")
     _grid_header(ws2, f"Monthly Expenses — FY{fiscal_year}",
-                 "Godavari Biorefineries Inc", 4)
+                 "Sathgen Therapeutics", 4)
     for ci, h in enumerate(["Month", "Budget", "Actuals", "Variance"], 1):
         c = ws2.cell(4, ci, h)
         c.font = _f(bold=True, size=8, color=_WHITE)
@@ -713,7 +713,7 @@ def export_analysis_xlsx(summary: list, chart_months: list,
     # ── Sheet 3: Monthly Income ────────────────────────────────────────────
     ws3 = wb.create_sheet("Monthly Income")
     _grid_header(ws3, f"Monthly Income — FY{fiscal_year}",
-                 "Godavari Biorefineries Inc", 2)
+                 "Sathgen Therapeutics", 2)
     for ci, h in enumerate(["Month", "Income Actual"], 1):
         c = ws3.cell(4, ci, h)
         c.font = _f(bold=True, size=8, color=_WHITE)
@@ -737,6 +737,6 @@ def export_analysis_xlsx(summary: list, chart_months: list,
     c.alignment = _al(h="right"); c.fill = _fill(_GREEN_L); c.border = _border()
     ws3.freeze_panes = "A5"
 
-    fname = f"GBInc-Analysis-FY{fiscal_year}.xlsx"
+    fname = f"Sathgen-Analysis-FY{fiscal_year}.xlsx"
     buf = BytesIO(); wb.save(buf)
     return buf.getvalue(), fname

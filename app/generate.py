@@ -27,7 +27,7 @@ GENERATE_DOCUMENTS = [
     {
         "key": "commission_invoice",
         "title": "Commission Invoice",
-        "description": "Invoice Godavari Biorefineries Ltd for commission on product sales. Calculates commission from FOB value and rate. Export to Excel or print.",
+        "description": "Invoice Sathgen Therapeutics for commission on product sales. Calculates commission from FOB value and rate. Export to Excel or print.",
         "create_url": "/generate/commission-invoices/new",
         "list_url": "/generate/commission-invoices",
     },

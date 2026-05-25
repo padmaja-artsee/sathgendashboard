@@ -2,7 +2,7 @@
 name = "sathgendashboard"
 version = "1.0.0"
 description = "Sathgen Dashboard"
-authors = ["Godavari Biorefineries Inc"]
+authors = ["Sathgen Therapeutics"]
 edition = "2021"
 
 [lib]

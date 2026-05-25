@@ -39,7 +39,7 @@ if _bundle_base:
 else:
     BASE = Path(__file__).resolve().parent.parent
 
-app = FastAPI(title="GBInc Finance")
+app = FastAPI(title="Sathgen Therapeutics Finance")
 
 if (BASE / "static").exists():
     app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")

@@ -60,7 +60,7 @@ DN_NUMERIC_FIELDS = [
 
 DEFAULT_DN: dict[str, Any] = {
     "document_title":         "DELIVERY NOTE CUM PACKING LIST",
-    "company_name":           "Godavari Biorefineries Inc",
+    "company_name":           "Sathgen Therapeutics",
     # Reference
     "reference_number":       "",
     "reference_date":         date.today().isoformat(),
@@ -99,7 +99,7 @@ DEFAULT_DN: dict[str, Any] = {
     # Additional info
     "number_of_pallets":      0,
     "pallet_weight_actual":   0,
-    "manufacturer":           "Godavari Biorefineries Ltd, Mumbai - India",
+    "manufacturer":           "Sathgen Therapeutics",
     "made_in":                "India",
     "handling_instruction":   "Please refer SDS provided",
     # Admin

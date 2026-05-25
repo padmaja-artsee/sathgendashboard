@@ -195,7 +195,7 @@ def _timeline_deal_ids(timeline: dict) -> set[int]:
             ids.add(int(act["deal_id"]))
     return ids
 
-app = FastAPI(title="GBInc Leads Dashboard")
+app = FastAPI(title="Sathgen Therapeutics Dashboard")
 
 _static_dir = BASE / "static"
 if _static_dir.exists():

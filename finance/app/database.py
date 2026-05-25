@@ -200,7 +200,7 @@ ACCOUNTS_SEED = [
 ]
 
 PAYMENT_ACCOUNTS_SEED = [
-    ("GBInc Bank Account", "bank"),
+    ("Sathgen Therapeutics Bank Account", "bank"),
     ("Petty Cash",         "cash"),
     ("Credit Card",        "credit_card"),
 ]

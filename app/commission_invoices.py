@@ -46,11 +46,11 @@ def form_getlist(form: Any, key: str) -> list[str]:
 
 DEFAULT_CI: dict[str, Any] = {
     "document_title":        "COMMISSION INVOICE",
-    "company_name":          "Godavari Biorefineries Inc",
+    "company_name":          "Sathgen Therapeutics",
     "invoice_number":        "",
     "invoice_date":          date.today().isoformat(),
     # Bill-to
-    "bill_to_name":          "Godavari Biorefineries Ltd",
+    "bill_to_name":          "Sathgen Therapeutics",
     "bill_to_address_1":     "Somaiya Bhavan, 45/47 Mahatma Gandhi Road",
     "bill_to_address_2":     "Fort, MUMBAI - 400 001. INDIA.",
     "bill_to_address_3":     "",

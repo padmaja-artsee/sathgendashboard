@@ -1,4 +1,4 @@
-# GBInc Leads Dashboard
+# Sathgen Therapeutics Dashboard
 
 A local web dashboard for managing sales leads — replaces spreadsheet workflows with search, summaries, and activity tracking.
 

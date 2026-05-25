@@ -29,7 +29,7 @@
       {% if ci.bill_to_address_3 %}<p>{{ ci.bill_to_address_3 }}</p>{% endif %}
       <p><strong>Customer Order no :</strong> {{ ci.customer_order_no or '—' }}</p>
       {% else %}
-      <input class="po-input" name="bill_to_name" value="{{ ci.bill_to_name or '' }}" placeholder="e.g. Godavari Biorefineries Ltd" />
+      <input class="po-input" name="bill_to_name" value="{{ ci.bill_to_name or '' }}" placeholder="e.g. Sathgen Therapeutics" />
       <input class="po-input" name="bill_to_address_1" value="{{ ci.bill_to_address_1 or '' }}" placeholder="Address line 1" />
       <input class="po-input" name="bill_to_address_2" value="{{ ci.bill_to_address_2 or '' }}" placeholder="Address line 2" />
       <input class="po-input" name="bill_to_address_3" value="{{ ci.bill_to_address_3 or '' }}" placeholder="Address line 3 (optional)" />
@@ -253,7 +253,7 @@
   {# ── Signature + Footer ── #}
   <div class="po-footer">
     <div class="po-sig-block">
-      <p class="po-sig-for">For Godavari Biorefineries Inc</p>
+      <p class="po-sig-for">For Sathgen Therapeutics</p>
       <div class="po-sig-line"></div>
       <p class="po-sig-label">Authorised Signatory</p>
     </div>
