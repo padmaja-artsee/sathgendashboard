@@ -207,13 +207,26 @@ function recalc() {
     if(el) el.textContent='$'+Math.round(tot).toLocaleString();
   });
   // Calc totals
+  // Helper: read a total cell value
+  function getCtot(name) {
+    const lid=nameToLid[name]; if(!lid) return 0;
+    const el=document.getElementById(`ctot_${lid}`);
+    return el ? (parseFloat(el.textContent.replace(/[$,—]/g,''))||0) : 0;
+  }
+
   CALC_NAMES.forEach(name=>{
     const lid=nameToLid[name];
     if(!lid) return;
-    const tot = months.reduce((s,m)=>{
-      const el=document.getElementById(`calc_${lid}_${m}`);
-      return s+(el ? (parseFloat(el.textContent.replace(/[$,]/g,''))||0) : 0);
-    },0);
+    let tot;
+    if(name==='Net (Income - Expenses)'){
+      // Compute directly as Total Income - Total Expenses (not sum of monthly cells)
+      tot = getCtot('Total Income') - getCtot('Total Expenses');
+    } else {
+      tot = months.reduce((s,m)=>{
+        const el=document.getElementById(`calc_${lid}_${m}`);
+        return s+(el ? (parseFloat(el.textContent.replace(/[$,—]/g,''))||0) : 0);
+      },0);
+    }
     const el=document.getElementById(`ctot_${lid}`);
     if(el){ el.textContent=fmt(tot); el.className='f-calc-total'+(tot<0?' f-neg':''); }
   });

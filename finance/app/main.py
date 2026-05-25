@@ -90,11 +90,20 @@ templates.env.filters["fmtdate"] = _fmt_date
 
 def _build_rows(grid: dict, items: list[dict]) -> list[dict]:
     full = compute_grid(grid, items)
+    by_name = {i["name"]: i["id"] for i in items}
     rows = []
     for item in items:
         lid = item["id"]
         monthly = {m: full.get((lid, m), 0.0) for m in FY_MONTHS}
-        total = sum(monthly.values())
+        if item["name"] == "Net (Income - Expenses)":
+            # Compute as Total Income total − Total Expenses total (not sum of monthly cells)
+            inc_lid = by_name.get("Total Income")
+            exp_lid = by_name.get("Total Expenses")
+            inc_tot = sum(full.get((inc_lid, m), 0) for m in FY_MONTHS) if inc_lid else 0
+            exp_tot = sum(full.get((exp_lid, m), 0) for m in FY_MONTHS) if exp_lid else 0
+            total = inc_tot - exp_tot
+        else:
+            total = sum(monthly.values())
         rows.append({
             "item": item, "monthly": monthly, "total": total,
             "style": SECTION_STYLES.get(item["name"], ""),
