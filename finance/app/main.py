@@ -21,6 +21,7 @@ from finance.app.database import (
     delete_line_item, delete_payment_account, delete_vendor,
     get_actuals_manual, get_budget_grid, get_fiscal_years,
     get_transaction_rollup, init_db, is_archived,
+    get_opening_balance, save_opening_balance,
     list_accounts, list_line_items, list_payment_accounts, list_vendors,
     save_account, save_actuals_manual, save_budget_grid,
     save_payment_account, save_vendor, unarchive_year,
@@ -184,11 +185,13 @@ async def budget_page(
     if current_sec:
         sections.append({"section": current_sec, "label": SECTION_LABELS.get(current_sec, ""), "rows": current_rows})
 
+    opening_balance = get_opening_balance(fy)
     return templates.TemplateResponse("budget.html", _ctx(
         request, fy=fy, fiscal_years=fys, archived=archived,
         sections=sections, items=items,
         months=FY_MONTHS, month_labels=MONTH_LABELS,
         saved=saved, uploaded=uploaded, upload_error=upload_error,
+        opening_balance=opening_balance,
     ))
 
 
@@ -197,12 +200,22 @@ async def save_budget(request: Request, fy: int = Form(...)):
     form = await request.form()
     values = {}
     for k, v in form.items():
-        if k == "fy": continue
+        if k in ("fy", "opening_balance"): continue
         try:
             values[k] = float(v) if v.strip() else 0.0
         except (ValueError, AttributeError):
             values[k] = 0.0
     save_budget_grid(fy, values)
+    return RedirectResponse(f"{FINANCE_BASE}/budget?fy={fy}&saved=1", status_code=303)
+
+
+@app.post("/budget/opening-balance")
+async def save_opening_balance_route(fy: int = Form(...), opening_balance: str = Form("0")):
+    try:
+        amount = float(opening_balance.replace(",", "") or 0)
+    except ValueError:
+        amount = 0.0
+    save_opening_balance(fy, amount)
     return RedirectResponse(f"{FINANCE_BASE}/budget?fy={fy}&saved=1", status_code=303)
 
 
@@ -283,7 +296,8 @@ async def actuals_page(request: Request, fy: int = Query(0), saved: int = Query(
     combined = {}
     for k in set(list(rollup.keys()) + list(manual.keys())):
         combined[k] = rollup.get(k, 0) + manual.get(k, 0)
-    full = compute_grid(combined, items)
+    opening_balance = get_opening_balance(fy)
+    full = compute_grid(combined, items, opening_balance)
 
     rows = []
     for item in items:
@@ -303,6 +317,7 @@ async def actuals_page(request: Request, fy: int = Query(0), saved: int = Query(
         request, fy=fy, fiscal_years=fys, archived=is_archived(fy),
         sections=sections, items=items,
         months=FY_MONTHS, month_labels=MONTH_LABELS, saved=saved,
+        opening_balance=opening_balance,
     ))
 
 
@@ -526,13 +541,16 @@ async def expense_new_form(
     from datetime import date
     fys = get_fiscal_years()
     if not fy: fy = fys[0]
+    accounts = list_accounts()
+    ft_account_id = next((a["id"] for a in accounts if a["name"] == "Transfer"), 0)
     return templates.TemplateResponse("expense_form.html", _ctx(
         request, fy=fy, fiscal_years=fys, transaction=None,
         tx_type=tx_type,
-        accounts=list_accounts(), vendors=list_vendors(),
+        accounts=accounts, vendors=list_vendors(),
         payment_accounts=list_payment_accounts(),
         today=date.today().isoformat(),
         prefill_account=account_id, prefill_vendor=vendor_id,
+        funds_transfer_account_id=ft_account_id,
         page="expenses",
     ))
 
@@ -550,6 +568,7 @@ async def expense_new_save(
     wire_sender_account: str = Form(""), wire_receiver_bank: str = Form(""),
     wire_receiver_account: str = Form(""), wire_swift_bic: str = Form(""),
     wire_iban: str = Form(""),
+    receipt_url: str = Form(""),
 ):
     rfname = ""
     if receipt and receipt.filename:
@@ -561,6 +580,7 @@ async def expense_new_save(
         payment_account_id=_or_none(payment_account_id),
         vendor_id=_or_none(vendor_id),
         reference=reference, notes=notes, receipt_filename=rfname,
+        receipt_url=receipt_url,
         wire_sender_name=wire_sender_name, wire_sender_bank=wire_sender_bank,
         wire_sender_account=wire_sender_account, wire_receiver_bank=wire_receiver_bank,
         wire_receiver_account=wire_receiver_account, wire_swift_bic=wire_swift_bic,
@@ -574,12 +594,15 @@ async def expense_edit_form(request: Request, tx_id: int):
     tx = get_transaction(tx_id)
     if not tx: return RedirectResponse(f"{FINANCE_BASE}/expenses", status_code=303)
     fys = get_fiscal_years()
+    accounts = list_accounts()
+    ft_account_id = next((a["id"] for a in accounts if a["name"] == "Transfer"), 0)
     return templates.TemplateResponse("expense_form.html", _ctx(
         request, fy=tx["fiscal_year"], fiscal_years=fys,
         transaction=tx, tx_type=tx["transaction_type"],
-        accounts=list_accounts(), vendors=list_vendors(),
+        accounts=accounts, vendors=list_vendors(),
         payment_accounts=list_payment_accounts(),
         today=tx["date"], prefill_account=0, prefill_vendor=0,
+        funds_transfer_account_id=ft_account_id,
         page="expenses",
     ))
 
@@ -597,6 +620,7 @@ async def expense_edit_save(
     wire_sender_account: str = Form(""), wire_receiver_bank: str = Form(""),
     wire_receiver_account: str = Form(""), wire_swift_bic: str = Form(""),
     wire_iban: str = Form(""),
+    receipt_url: str = Form(""),
 ):
     existing = get_transaction(tx_id)
     rfname = None
@@ -613,6 +637,7 @@ async def expense_edit_save(
         payment_account_id=_or_none(payment_account_id),
         vendor_id=_or_none(vendor_id),
         reference=reference, notes=notes, receipt_filename=rfname,
+        receipt_url=receipt_url,
         wire_sender_name=wire_sender_name, wire_sender_bank=wire_sender_bank,
         wire_sender_account=wire_sender_account, wire_receiver_bank=wire_receiver_bank,
         wire_receiver_account=wire_receiver_account, wire_swift_bic=wire_swift_bic,

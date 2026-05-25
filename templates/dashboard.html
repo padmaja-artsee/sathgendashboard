@@ -39,46 +39,20 @@
 <div class="dashboard-grid">
   <div class="card">
     <div class="card-header">
-      <h2 class="card-title">Pipeline by Stage</h2>
-      <a href="/opportunities" class="card-link">View All →</a>
-    </div>
-    <div class="stage-pills">
-      {% set stage_labels = {
-        'initial_contact': 'Initial Contact',
-        'nda_negotiation': 'NDA Negotiation',
-        'due_diligence': 'Due Diligence',
-        'term_sheet': 'Term Sheet',
-        'negotiation': 'Negotiation',
-        'closed_won': 'Closed Won',
-        'closed_lost': 'Closed Lost',
-        'on_hold': 'On Hold'
-      } %}
-      {% for stage, opps in opp_by_stage.items() %}
-      <div class="stage-pill-item">
-        <a href="/opportunities?stage={{ stage }}" class="stage-pill stage-{{ stage }}">
-          {{ stage_labels.get(stage, stage) }}
-        </a>
-        <span class="stage-count">{{ opps|length }}</span>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
       <h2 class="card-title">Upcoming Follow-ups</h2>
       <a href="/followups" class="card-link">View All →</a>
     </div>
     {% if upcoming %}
     <table class="table table-sm">
-      <thead><tr><th>Due</th><th>Action</th><th>Priority</th><th>Company</th></tr></thead>
+      <thead><tr><th>Due</th><th>Action</th><th>Priority</th><th>Company</th><th>Contact</th></tr></thead>
       <tbody>
         {% for f in upcoming %}
         <tr>
           <td class="text-mono">{{ f.due_date }}</td>
           <td>{{ f.action }}</td>
           <td><span class="badge priority-{{ f.priority }}">{{ f.priority }}</span></td>
-          <td>{{ f.company_name or '—' }}</td>
+          <td>{% if f.company_id %}<a href="/companies/{{ f.company_id }}" class="link-primary">{{ f.company_name }}</a>{% else %}—{% endif %}</td>
+          <td>{% if f.contact_id %}<a href="/contacts/{{ f.contact_id }}" class="link-primary">{{ f.contact_name }}</a>{% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>

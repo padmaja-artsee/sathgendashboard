@@ -75,16 +75,19 @@ def cal_year_for(fiscal_year: int, month: int) -> int:
 # (section, name, is_calculated, is_system, sort_order)
 LINE_ITEMS_SEED = [
     # ── Income ──────────────────────────────────────────────────────────────
-    ("income",   "Commission Income",         0, 1, 10),
+    ("income",   "Transfer",            0, 1, 10),
     ("income",   "Other Income",              0, 1, 20),
     ("income",   "Total Income",              1, 1, 99),
     # ── Employee Costs ──────────────────────────────────────────────────────
-    ("employee", "Compensation",              0, 1, 10),
+    ("employee", "Payroll Tax",               0, 1,  5),
+    ("employee", "Wages - PG",               0, 1, 11),
+    ("employee", "Comp - SM",                0, 1, 12),
+    ("employee", "Comp - SAB",               0, 1, 13),
+    ("employee", "Compensation",              0, 1, 14),
     ("employee", "Health Insurance",          0, 1, 20),
     ("employee", "Disability Insurance",      0, 1, 25),
     ("employee", "Workers Compensation",      0, 1, 30),
     ("employee", "Employee Benefits",         0, 1, 35),
-    ("employee", "Payroll Tax",               0, 1, 80),
     ("employee", "Total Employee Costs",      1, 1, 99),
     # ── Office Costs ────────────────────────────────────────────────────────
     ("office",   "Office lease",              0, 1, 10),
@@ -122,6 +125,10 @@ LINE_ITEMS_SEED = [
 
 # Items added after initial release — used by the migration to patch existing DBs
 _MIGRATION_LINE_ITEMS = [
+    ("employee", "Payroll Tax",             0, 1,  5),
+    ("employee", "Wages - PG",             0, 1, 11),
+    ("employee", "Comp - SM",              0, 1, 12),
+    ("employee", "Comp - SAB",             0, 1, 13),
     ("employee", "Health Insurance",        0, 1, 20),
     ("employee", "Disability Insurance",    0, 1, 25),
     ("employee", "Workers Compensation",    0, 1, 30),
@@ -150,7 +157,8 @@ SECTION_ORDER = ["income", "employee", "office", "admin", "travel", "totals"]
 # Default account → line item mapping
 ACCOUNTS_SEED = [
     # Income
-    ("Commission Income",           "income",   "Commission Income",        1,  10),
+    ("Transfer",              "income",   "Transfer",           1,  10),
+    ("Commission Income",           "income",   "Transfer",           1,  11),
     ("Other Income",                "income",   "Other Income",             1,  20),
     # Employee
     ("Compensation",                "employee", "Compensation",             1,  30),
@@ -261,6 +269,7 @@ def init_db() -> None:
                 reference           TEXT    DEFAULT '',
                 notes               TEXT    DEFAULT '',
                 receipt_filename    TEXT    DEFAULT '',
+                receipt_url        TEXT    DEFAULT '',
                 fiscal_year         INTEGER,
                 month               INTEGER,
                 created_at          TEXT,
@@ -341,6 +350,11 @@ def _seed_payment_accounts(conn) -> None:
 def _run_migrations(conn) -> None:
     """Idempotent — safe to run on every startup.
     Inserts any line items / accounts that were added after initial release."""
+    # 0a. Add opening_balance to fy_archive if missing
+    fy_cols = {r[1] for r in conn.execute("PRAGMA table_info(fy_archive)").fetchall()}
+    if 'opening_balance' not in fy_cols:
+        conn.execute("ALTER TABLE fy_archive ADD COLUMN opening_balance REAL DEFAULT 0")
+
     # 0. Add wire-transfer columns to transactions if they don't exist yet
     existing_cols = {r[1] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()}
     for col, defn in [
@@ -351,9 +365,23 @@ def _run_migrations(conn) -> None:
         ("wire_receiver_account","TEXT DEFAULT ''"),
         ("wire_swift_bic",      "TEXT DEFAULT ''"),
         ("wire_iban",           "TEXT DEFAULT ''"),
+        ("receipt_url",         "TEXT DEFAULT ''"),
     ]:
         if col not in existing_cols:
             conn.execute(f"ALTER TABLE transactions ADD COLUMN {col} {defn}")
+
+    # 0. Rename "Commission Income" → "Transfer" if still present
+    # For line_items: rename only if "Transfer" doesn't already exist
+    ft_li = conn.execute("SELECT id FROM line_items WHERE name='Transfer' AND section='income'").fetchone()
+    ci_li = conn.execute("SELECT id FROM line_items WHERE name='Commission Income' AND section='income'").fetchone()
+    if ci_li and ft_li:
+        # Both exist — remap any references to old id, then delete duplicate
+        conn.execute("UPDATE transactions SET account_id=(SELECT id FROM accounts WHERE name='Transfer' AND section='income' LIMIT 1) WHERE account_id IN (SELECT id FROM accounts WHERE name='Commission Income' AND section='income')")
+        conn.execute("DELETE FROM accounts WHERE name='Commission Income' AND section='income'")
+        conn.execute("DELETE FROM line_items WHERE name='Commission Income' AND section='income'")
+    elif ci_li and not ft_li:
+        conn.execute("UPDATE line_items SET name='Transfer' WHERE name='Commission Income' AND section='income'")
+        conn.execute("UPDATE accounts SET name='Transfer' WHERE name='Commission Income' AND section='income'")
 
     # 1. Add missing line items (INSERT OR IGNORE respects UNIQUE(section,name))
     conn.executemany(
@@ -475,8 +503,9 @@ def save_actuals_manual(fiscal_year: int, values: dict) -> None:
             )
 
 
-def compute_grid(raw: dict, items: list[dict]) -> dict:
-    """Add calculated rows to a raw {(lid,month): amount} grid."""
+def compute_grid(raw: dict, items: list[dict], opening_balance: float = 0.0) -> dict:
+    """Add calculated rows to a raw {(lid,month): amount} grid.
+    opening_balance is added once to the first month's Net."""
     result = dict(raw)
     by_name = {i["name"]: i["id"] for i in items}
 
@@ -487,6 +516,7 @@ def compute_grid(raw: dict, items: list[dict]) -> dict:
             if i["section"] == section and not i["is_calculated"]
         )
 
+    running_balance = opening_balance
     for month in FY_MONTHS:
         ti  = sec_sum("income",   month)
         tec = sec_sum("employee", month)
@@ -494,7 +524,8 @@ def compute_grid(raw: dict, items: list[dict]) -> dict:
         tad = sec_sum("admin",    month)
         ttr = sec_sum("travel",   month)
         tex = tec + toc + tad + ttr
-        net = ti - tex
+        # Cumulative running balance: prior balance + this month's net
+        running_balance = running_balance + ti - tex
 
         for name, val in [
             ("Total Income",            ti),
@@ -503,7 +534,7 @@ def compute_grid(raw: dict, items: list[dict]) -> dict:
             ("Total Admin",             tad),
             ("Total Travel",            ttr),
             ("Total Expenses",          tex),
-            ("Net (Income - Expenses)", net),
+            ("Net (Income - Expenses)", running_balance),
         ]:
             if name in by_name:
                 result[(by_name[name], month)] = val
@@ -530,8 +561,34 @@ def get_fiscal_years() -> list[int]:
 def is_archived(fiscal_year: int) -> bool:
     with get_db() as conn:
         return bool(conn.execute(
-            "SELECT 1 FROM fy_archive WHERE fiscal_year=?", (fiscal_year,)
+            "SELECT 1 FROM fy_archive WHERE fiscal_year=? AND archived_at IS NOT NULL", (fiscal_year,)
         ).fetchone())
+
+
+def get_opening_balance(fiscal_year: int) -> float:
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT opening_balance FROM fy_archive WHERE fiscal_year=?", (fiscal_year,)
+        ).fetchone()
+        return float(row["opening_balance"]) if row and row["opening_balance"] else 0.0
+
+
+def save_opening_balance(fiscal_year: int, amount: float) -> None:
+    with get_db() as conn:
+        existing = conn.execute(
+            "SELECT fiscal_year FROM fy_archive WHERE fiscal_year=?", (fiscal_year,)
+        ).fetchone()
+        if existing:
+            conn.execute(
+                "UPDATE fy_archive SET opening_balance=? WHERE fiscal_year=?",
+                (amount, fiscal_year)
+            )
+        else:
+            # Insert without archived_at so the year stays active/editable
+            conn.execute(
+                "INSERT INTO fy_archive (fiscal_year, opening_balance) VALUES (?, ?)",
+                (fiscal_year, amount)
+            )
 
 
 def archive_year(fiscal_year: int) -> None:

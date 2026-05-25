@@ -18,7 +18,7 @@ import time
 import webbrowser
 
 HOST = "127.0.0.1"
-PORT = 8000
+PORT = 8001   # 8000 is reserved for the Leads app; Sathgen uses 8001
 
 
 def _find_free_port(preferred: int) -> int:

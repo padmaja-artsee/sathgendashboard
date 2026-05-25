@@ -28,6 +28,23 @@
   </div>
 </div>
 
+{# ── Opening Balance ── #}
+<div class="f-card" style="margin-bottom:1rem;padding:.75rem 1rem;">
+  <form method="post" action="{{ _base }}/budget/opening-balance" style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+    <input type="hidden" name="fy" value="{{ fy }}"/>
+    <label style="font-weight:600;font-size:.9rem;white-space:nowrap;">Opening Balance (Apr {{ fy-1 }})</label>
+    {% if archived %}
+      <span class="f-ro-val" style="font-size:1rem;">${{ "{:,.2f}".format(opening_balance) }}</span>
+    {% else %}
+      <input type="number" step="0.01" name="opening_balance"
+             value="{{ opening_balance if opening_balance else '' }}"
+             placeholder="0.00" class="f-input" style="max-width:180px;"/>
+      <button class="f-btn-sm f-btn-primary" type="submit">Save Balance</button>
+    {% endif %}
+    <span class="f-text-muted" style="font-size:.8rem;">Cash / bank balance at the start of the fiscal year</span>
+  </form>
+</div>
+
 <form method="post" action="{{ _base }}/budget" id="budgetForm">
   <input type="hidden" name="fy" value="{{ fy }}"/>
 
@@ -138,6 +155,7 @@
 </form>
 
 <script>
+const OPENING_BALANCE = {{ opening_balance | default(0) }};
 // Section → calc row names
 const SECTIONS = {
   income:   ['Total Income'],
@@ -164,6 +182,7 @@ function secItems(sec) { return items.filter(i=>i.section===sec && !i.is_calcula
 function fmt(v) { return v===0?'—':'$'+Math.round(v).toLocaleString(); }
 
 function recalc() {
+  let runningBalance = OPENING_BALANCE;
   months.forEach(m => {
     let ti=0,tec=0,toc=0,tad=0,ttr=0;
     secItems('income').forEach(i=>ti+=getVal(i.id,m));
@@ -171,9 +190,10 @@ function recalc() {
     secItems('office').forEach(i=>toc+=getVal(i.id,m));
     secItems('admin').forEach(i=>tad+=getVal(i.id,m));
     secItems('travel').forEach(i=>ttr+=getVal(i.id,m));
-    const tex=tec+toc+tad+ttr, net=ti-tex;
+    const tex=tec+toc+tad+ttr;
+    runningBalance = runningBalance + ti - tex;
     const map={'Total Income':ti,'Total Employee Costs':tec,'Total Office Costs':toc,
-               'Total Admin':tad,'Total Travel':ttr,'Total Expenses':tex,'Net (Income - Expenses)':net};
+               'Total Admin':tad,'Total Travel':ttr,'Total Expenses':tex,'Net (Income - Expenses)':runningBalance};
     Object.entries(map).forEach(([name,val])=>{
       const lid=nameToLid[name];
       if(!lid) return;

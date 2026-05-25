@@ -712,6 +712,37 @@ select[multiple].form-select option:checked { background: var(--accent); color: 
 .timeline-item.type-intro { border-left-color: #ec4899; }
 .timeline-item.type-intro::before { background: #ec4899; }
 
+/* Contact deal cards (opportunity detail page) */
+.contact-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 1rem;
+}
+.contact-deal-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface);
+}
+.contact-deal-name { font-weight: 600; font-size: 14px; }
+.contact-deal-title { font-size: 12px; color: var(--text-secondary); }
+.contact-deal-company { font-size: 12px; color: var(--text-secondary); }
+.contact-deal-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.contact-deal-count { color: var(--text-secondary); }
+.contact-deal-action { font-size: 16px; text-decoration: none; color: var(--accent); }
+.timeline-contact { font-size: 12px; color: var(--text-secondary); }
+
+/* Two-col layout for objections/notes at bottom of deal room */
+.detail-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 700px) { .detail-two-col { grid-template-columns: 1fr; } }
+
+.overdue-row { background: #fff5f5; }
+.hidden { display: none !important; }
+
 .timeline-meta {
   display: flex;
   align-items: center;

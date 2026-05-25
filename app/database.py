@@ -161,6 +161,14 @@ CREATE TABLE IF NOT EXISTS document_shares (
     notes TEXT DEFAULT '',
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS opportunity_contacts (
+    opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE CASCADE,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+    role TEXT DEFAULT '',
+    added_at TEXT NOT NULL,
+    PRIMARY KEY (opportunity_id, contact_id)
+);
         """)
         # Migration: add partnership_type if it doesn't exist yet
         existing = {r[1] for r in db.execute("PRAGMA table_info(companies)").fetchall()}
@@ -493,7 +501,52 @@ def get_opportunity_detail(opp_id: int) -> dict:
                WHERE ds.opportunity_id=? ORDER BY ds.shared_date DESC""",
             (opp_id,)
         ).fetchall())
-    return {**opp, 'activities': activities, 'followups': followups, 'doc_shares': doc_shares}
+        linked_contacts = _rows(db.execute(
+            """SELECT ct.*, co.name AS company_name, oc.role,
+               (SELECT COUNT(*) FROM activities a WHERE a.contact_id=ct.id AND a.opportunity_id=?) AS activity_count
+               FROM opportunity_contacts oc
+               JOIN contacts ct ON ct.id=oc.contact_id
+               LEFT JOIN companies co ON co.id=ct.company_id
+               WHERE oc.opportunity_id=?
+               ORDER BY ct.last_name""",
+            (opp_id, opp_id)
+        ).fetchall())
+    return {**opp, 'activities': activities, 'followups': followups,
+            'doc_shares': doc_shares, 'linked_contacts': linked_contacts}
+
+
+def link_contact_to_opportunity(opp_id: int, contact_id: int, role: str = '') -> None:
+    ts = now_iso()
+    with get_db() as db:
+        db.execute(
+            "INSERT OR REPLACE INTO opportunity_contacts (opportunity_id, contact_id, role, added_at) VALUES (?,?,?,?)",
+            (opp_id, contact_id, role, ts)
+        )
+
+
+def unlink_contact_from_opportunity(opp_id: int, contact_id: int) -> None:
+    with get_db() as db:
+        db.execute(
+            "DELETE FROM opportunity_contacts WHERE opportunity_id=? AND contact_id=?",
+            (opp_id, contact_id)
+        )
+
+
+def get_contact_opportunities(contact_id: int) -> list:
+    """All opportunities a contact is linked to, with activity count."""
+    with get_db() as db:
+        return _rows(db.execute(
+            """SELECT o.*, co.name AS company_name,
+               (SELECT COUNT(*) FROM activities a WHERE a.contact_id=? AND a.opportunity_id=o.id) AS activity_count,
+               (SELECT MAX(a.activity_date) FROM activities a WHERE a.contact_id=? AND a.opportunity_id=o.id) AS last_activity_date,
+               oc.role
+               FROM opportunity_contacts oc
+               JOIN opportunities o ON o.id=oc.opportunity_id
+               LEFT JOIN companies co ON co.id=o.company_id
+               WHERE oc.contact_id=?
+               ORDER BY o.stage, o.updated_at DESC""",
+            (contact_id, contact_id, contact_id)
+        ).fetchall())
 
 
 # ── Activities ────────────────────────────────────────────────────────────────

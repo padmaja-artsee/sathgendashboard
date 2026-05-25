@@ -30,6 +30,28 @@
   {% if contact.notes %}<div class="detail-notes">{{ contact.notes }}</div>{% endif %}
 </div>
 
+{# ── Opportunities this contact is involved in ── #}
+{% if contact_opportunities %}
+<div class="card mt-4">
+  <div class="card-header"><h3 class="card-title">Opportunities</h3></div>
+  <table class="table table-sm">
+    <thead><tr><th>Deal</th><th>Stage</th><th>Asset</th><th>Interactions</th><th>Last Activity</th><th></th></tr></thead>
+    <tbody>
+      {% for o in contact_opportunities %}
+      <tr>
+        <td><a href="/opportunities/{{ o.id }}" class="link-primary">{{ o.name }}</a>{% if o.company_name %} <span class="text-secondary" style="font-size:12px">· {{ o.company_name }}</span>{% endif %}</td>
+        <td><span class="badge stage-{{ o.stage }}">{{ o.stage | replace('_',' ') | title }}</span></td>
+        <td>{{ o.asset_or_program or '—' }}</td>
+        <td>{{ o.activity_count }}</td>
+        <td class="text-mono">{{ o.last_activity_date or '—' }}</td>
+        <td><a href="/opportunities/{{ o.id }}" class="btn btn-ghost btn-sm">View Deal →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <div class="card mt-4">
   <div class="card-header">
     <h3 class="card-title">Activity Timeline</h3>

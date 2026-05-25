@@ -20,11 +20,9 @@
              value="{{ transaction.date if transaction else today }}"/>
     </div>
 
+    {% if tx_type != "income" %}
     <div class="f-field">
-      <label class="f-label">
-        {{ "Transfer Account" if tx_type=="income" else "Expense Account" }}
-        <span class="f-required">*</span>
-      </label>
+      <label class="f-label">Expense Account <span class="f-required">*</span></label>
       <select name="account_id" class="f-select" required>
         <option value="">Select account…</option>
         {% set cur_section = namespace(v="") %}
@@ -43,6 +41,9 @@
         {% if cur_section.v %}</optgroup>{% endif %}
       </select>
     </div>
+    {% else %}
+    <input type="hidden" name="account_id" value="{{ transaction.account_id if transaction else funds_transfer_account_id }}"/>
+    {% endif %}
 
     <div class="f-field">
       <label class="f-label">Amount <span class="f-required">*</span></label>
@@ -77,6 +78,7 @@
     </div>
     {% endif %}
 
+    {% if tx_type != "income" %}
     <div class="f-field">
       <label class="f-label">Payment Account</label>
       <select name="payment_account_id" class="f-select">
@@ -88,6 +90,9 @@
         {% endfor %}
       </select>
     </div>
+    {% else %}
+    <input type="hidden" name="payment_account_id" value=""/>
+    {% endif %}
 
     <div class="f-field">
       <label class="f-label">Reference / Invoice #</label>
@@ -153,10 +158,23 @@
               placeholder="Optional notes…">{{ transaction.notes if transaction else '' }}</textarea>
   </div>
 
+  <!-- Receipt / document link -->
+  <div class="f-field" style="margin-top:.75rem">
+    <label class="f-label">Receipt / Document URL</label>
+    <input type="url" name="receipt_url" class="f-input"
+           value="{{ transaction.receipt_url if transaction else '' }}"
+           placeholder="Paste Google Drive, Dropbox, or any URL…"/>
+    {% if transaction and transaction.receipt_url %}
+    <div style="margin-top:.3rem;font-size:.82rem;">
+      <a href="{{ transaction.receipt_url }}" target="_blank" rel="noopener">🔗 View linked document</a>
+    </div>
+    {% endif %}
+  </div>
+
   <!-- Receipt upload (expenses only) -->
   {% if tx_type != "income" %}
   <div class="f-field" style="margin-top:.75rem">
-    <label class="f-label">Receipt (PDF/Image)</label>
+    <label class="f-label">Or upload file (PDF/Image)</label>
     {% if transaction and transaction.receipt_filename %}
     <div class="f-existing-receipt">
       <a href="{{ _base }}/expenses/{{ transaction.id }}/receipt" target="_blank">📎 View current receipt</a>

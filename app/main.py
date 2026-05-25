@@ -24,6 +24,7 @@ from app.database import (
     list_contacts, get_contact, create_contact, update_contact, delete_contact,
     list_opportunities, get_opportunity, create_opportunity, update_opportunity, delete_opportunity,
     opportunities_by_stage, get_opportunity_detail,
+    link_contact_to_opportunity, unlink_contact_from_opportunity, get_contact_opportunities,
     list_activities, get_activity, create_activity, update_activity, delete_activity,
     list_followups, get_followup, create_followup, complete_followup, delete_followup,
     overdue_followups, due_this_week_followups,
@@ -270,9 +271,11 @@ async def contact_detail(request: Request, contact_id: int):
     activities = list_activities(contact_id=contact_id, limit=30)
     followups = list_followups(status='open')
     followups = [f for f in followups if f.get('contact_id') == contact_id]
+    contact_opportunities = get_contact_opportunities(contact_id)
     return templates.TemplateResponse("contact_detail.html", ctx(
         request, page="contacts",
         contact=contact, activities=activities, followups=followups,
+        contact_opportunities=contact_opportunities,
     ))
 
 
@@ -403,9 +406,23 @@ async def opportunity_detail(request: Request, opp_id: int):
     detail = get_opportunity_detail(opp_id)
     if not detail:
         return RedirectResponse("/opportunities", status_code=303)
+    all_contacts = list_contacts()
     return templates.TemplateResponse("opportunity_detail.html", ctx(
         request, page="opportunities", detail=detail,
+        all_contacts=all_contacts, today=_today(),
     ))
+
+
+@app.post("/opportunities/{opp_id}/link-contact")
+async def opportunity_link_contact(opp_id: int, contact_id: int = Form(...), role: str = Form("")):
+    link_contact_to_opportunity(opp_id, contact_id, role)
+    return RedirectResponse(f"/opportunities/{opp_id}", status_code=303)
+
+
+@app.post("/opportunities/{opp_id}/unlink-contact/{contact_id}")
+async def opportunity_unlink_contact(opp_id: int, contact_id: int):
+    unlink_contact_from_opportunity(opp_id, contact_id)
+    return RedirectResponse(f"/opportunities/{opp_id}", status_code=303)
 
 
 @app.get("/opportunities/{opp_id}/edit", response_class=HTMLResponse)

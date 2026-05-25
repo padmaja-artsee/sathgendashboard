@@ -1,15 +1,16 @@
 {% extends "base.html" %}
-{% block title %}{{ detail.name }} — Opportunity{% endblock %}
+{% block title %}{{ detail.name }} — Deal Room{% endblock %}
 {% block content %}
 <div class="page-header">
   <div class="breadcrumb"><a href="/opportunities">Opportunities</a> / <span>{{ detail.name }}</span></div>
   <div class="header-actions">
-    <a href="/opportunities/{{ detail.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
-    <a href="/activities/new?opportunity_id={{ detail.id }}&company_id={{ detail.company_id or '' }}" class="btn btn-primary btn-sm">+ Activity</a>
+    <a href="/opportunities/{{ detail.id }}/edit" class="btn btn-outline btn-sm">Edit Deal</a>
+    <a href="/activities/new?opportunity_id={{ detail.id }}&company_id={{ detail.company_id or '' }}" class="btn btn-primary btn-sm">+ Log Activity</a>
     <a href="/followups/new?opportunity_id={{ detail.id }}" class="btn btn-outline btn-sm">+ Follow-up</a>
   </div>
 </div>
 
+{# ── Deal header ── #}
 <div class="detail-header card">
   <div class="detail-meta-grid">
     <div>
@@ -19,11 +20,11 @@
         <span class="badge priority-{{ detail.priority }}">{{ detail.priority }}</span>
         <span class="prob-circle">{{ detail.probability }}%</span>
       </div>
-      {% if detail.company_id %}<div><a href="/companies/{{ detail.company_id }}" class="link-primary">{{ detail.company_name }}</a></div>{% endif %}
+      {% if detail.company_id %}<div class="mt-1"><a href="/companies/{{ detail.company_id }}" class="link-primary">{{ detail.company_name }}</a></div>{% endif %}
     </div>
     <div class="detail-meta-list">
       {% if detail.opportunity_type %}<div><label>Type</label> {{ detail.opportunity_type | replace('_',' ') | title }}</div>{% endif %}
-      {% if detail.asset_or_program %}<div><label>Asset/Program</label> {{ detail.asset_or_program }}</div>{% endif %}
+      {% if detail.asset_or_program %}<div><label>Asset / Program</label> {{ detail.asset_or_program }}</div>{% endif %}
       {% if detail.indication %}<div><label>Indication</label> {{ detail.indication }}</div>{% endif %}
       {% if detail.estimated_value %}<div><label>Est. Value</label> {{ detail.estimated_value }}</div>{% endif %}
       {% if detail.expected_close_date %}<div><label>Close Date</label> {{ detail.expected_close_date }}</div>{% endif %}
@@ -34,6 +35,7 @@
   </div>
 </div>
 
+{# ── Next step ── #}
 {% if detail.next_step %}
 <div class="next-step-box card mt-3">
   <div class="next-step-label">Next Step</div>
@@ -42,13 +44,53 @@
 </div>
 {% endif %}
 
-{% if detail.key_objections %}
+{# ── Key contacts ── #}
 <div class="card mt-3">
-  <div class="card-header"><h3 class="card-title">Key Objections</h3></div>
-  <div class="card-body">{{ detail.key_objections }}</div>
-</div>
-{% endif %}
+  <div class="card-header">
+    <h3 class="card-title">Key Contacts on this Deal</h3>
+    <button class="btn btn-outline btn-sm" onclick="document.getElementById('linkContactForm').classList.toggle('hidden')">+ Link Contact</button>
+  </div>
 
+  <div id="linkContactForm" class="hidden" style="padding:0.75rem 1rem;border-bottom:1px solid var(--border);">
+    <form method="post" action="/opportunities/{{ detail.id }}/link-contact" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+      <select name="contact_id" class="form-select" style="max-width:220px;" required>
+        <option value="">— Select contact —</option>
+        {% for c in all_contacts %}
+        <option value="{{ c.id }}">{{ c.first_name }} {{ c.last_name }}{% if c.company_name %} ({{ c.company_name }}){% endif %}</option>
+        {% endfor %}
+      </select>
+      <input type="text" name="role" class="form-control" style="max-width:160px;" placeholder="Role on deal (optional)">
+      <button class="btn btn-primary btn-sm" type="submit">Link</button>
+    </form>
+  </div>
+
+  {% if detail.linked_contacts %}
+  <div class="contact-cards-grid">
+    {% for c in detail.linked_contacts %}
+    <div class="contact-deal-card">
+      <div class="contact-deal-info">
+        <a href="/contacts/{{ c.id }}" class="link-primary contact-deal-name">{{ c.first_name }} {{ c.last_name }}</a>
+        {% if c.title %}<div class="contact-deal-title">{{ c.title }}</div>{% endif %}
+        {% if c.company_name %}<div class="contact-deal-company">{{ c.company_name }}</div>{% endif %}
+        {% if c.role %}<span class="badge badge-partner">{{ c.role }}</span>{% endif %}
+      </div>
+      <div class="contact-deal-meta">
+        {% if c.email %}<a href="mailto:{{ c.email }}" class="contact-deal-action" title="Email">✉</a>{% endif %}
+        <span class="contact-deal-count" title="Activities with this contact on this deal">{{ c.activity_count }} interaction{% if c.activity_count != 1 %}s{% endif %}</span>
+        <a href="/activities/new?opportunity_id={{ detail.id }}&contact_id={{ c.id }}&company_id={{ detail.company_id or '' }}" class="btn btn-ghost btn-sm">+ Activity</a>
+        <form method="post" action="/opportunities/{{ detail.id }}/unlink-contact/{{ c.id }}" class="inline-form" data-confirm="Remove {{ c.first_name }} from this deal?">
+          <button class="btn btn-ghost btn-sm" title="Unlink">×</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state" style="padding:1rem"><p>No contacts linked yet. Use "+ Link Contact" to add key people.</p></div>
+  {% endif %}
+</div>
+
+{# ── Activity timeline ── #}
 <div class="card mt-3">
   <div class="card-header">
     <h3 class="card-title">Activity Timeline</h3>
@@ -61,20 +103,21 @@
       <div class="timeline-meta">
         <span class="text-mono">{{ a.activity_date }}</span>
         <span class="badge type-{{ a.activity_type }}">{{ a.activity_type }}</span>
+        {% if a.contact_name %}<span class="timeline-contact">with <a href="/contacts/{{ a.contact_id }}">{{ a.contact_name }}</a></span>{% endif %}
         {% if a.sentiment != 'neutral' %}<span class="badge sentiment-{{ a.sentiment }}">{{ a.sentiment | replace('_',' ') }}</span>{% endif %}
       </div>
-      <div class="timeline-subject">{{ a.subject or '(no subject)' }}</div>
       {% if a.summary %}<div class="timeline-body">{{ a.summary }}</div>{% endif %}
-      {% if a.documents_shared %}<div class="timeline-docs">Docs: {{ a.documents_shared }}</div>{% endif %}
-      {% if a.action_items %}<div class="timeline-actions-text">Actions: {{ a.action_items }}</div>{% endif %}
+      {% if a.documents_shared %}<div class="timeline-docs">Docs shared: {{ a.documents_shared }}</div>{% endif %}
+      {% if a.action_items %}<div class="timeline-actions-text">Action items: {{ a.action_items }}</div>{% endif %}
     </div>
     {% endfor %}
   </div>
   {% else %}
-  <div class="empty-state"><p>No activities yet.</p></div>
+  <div class="empty-state" style="padding:1rem"><p>No activities logged for this deal yet.</p></div>
   {% endif %}
 </div>
 
+{# ── Follow-ups ── #}
 {% if detail.followups %}
 <div class="card mt-3">
   <div class="card-header">
@@ -85,7 +128,7 @@
     <thead><tr><th>Due</th><th>Action</th><th>Priority</th><th>Status</th><th></th></tr></thead>
     <tbody>
       {% for f in detail.followups %}
-      <tr>
+      <tr class="{% if f.status == 'open' and f.due_date < today %}overdue-row{% endif %}">
         <td class="text-mono">{{ f.due_date }}</td>
         <td>{{ f.action }}</td>
         <td><span class="badge priority-{{ f.priority }}">{{ f.priority }}</span></td>
@@ -102,12 +145,35 @@
     </tbody>
   </table>
 </div>
-{% endif %}
-
-{% if detail.notes %}
+{% else %}
 <div class="card mt-3">
-  <div class="card-header"><h3 class="card-title">Notes</h3></div>
-  <div class="card-body">{{ detail.notes }}</div>
+  <div class="card-header">
+    <h3 class="card-title">Follow-ups</h3>
+    <a href="/followups/new?opportunity_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add</a>
+  </div>
+  <div class="empty-state" style="padding:1rem"><p>No follow-ups yet.</p></div>
 </div>
 {% endif %}
+
+{# ── Key objections / Notes ── #}
+<div class="detail-two-col mt-3">
+  {% if detail.key_objections %}
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Key Objections</h3></div>
+    <div class="card-body">{{ detail.key_objections }}</div>
+  </div>
+  {% endif %}
+  {% if detail.notes %}
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Notes</h3></div>
+    <div class="card-body">{{ detail.notes }}</div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+document.querySelectorAll('.inline-form[data-confirm]').forEach(f => {
+  f.addEventListener('submit', e => { if(!confirm(f.dataset.confirm)) e.preventDefault(); });
+});
+</script>
 {% endblock %}
