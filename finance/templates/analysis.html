@@ -390,35 +390,47 @@ function renderBreakdown() {
 
 function downloadChart(canvasId, filename, title) {
   const canvas = document.getElementById(canvasId);
-  const pad = 14;
-  const titleH = title ? 36 : 0;
-  const subH   = title ? 20 : 0;
+
+  // Target a fixed wide output regardless of screen size
+  const TARGET_W = 1400;
+  const scale    = TARGET_W / canvas.width;
+  const chartH   = Math.round(canvas.height * scale);
+
+  const PAD    = 28;
+  const TOPBAR = 68;   // company name + chart title
+  const FOOTER = 28;
+
   const off = document.createElement("canvas");
-  off.width  = canvas.width;
-  off.height = canvas.height + titleH + subH + pad * 2;
+  off.width  = TARGET_W;
+  off.height = TOPBAR + chartH + FOOTER + PAD;
   const ctx = off.getContext("2d");
 
   // White background
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, off.width, off.height);
 
-  // Title
-  if (title) {
-    ctx.fillStyle = "#1C5631";
-    ctx.font = "bold 15px system-ui, sans-serif";
-    ctx.fillText("Sathgen Therapeutics — Finance", pad, pad + 14);
-    ctx.fillStyle = "#222222";
-    ctx.font = "bold 13px system-ui, sans-serif";
-    ctx.fillText(title, pad, pad + 14 + subH);
-  }
+  // Green top strip
+  ctx.fillStyle = "#1C5631";
+  ctx.fillRect(0, 0, off.width, TOPBAR - 8);
 
-  // Chart
-  ctx.drawImage(canvas, 0, titleH + subH + pad * 2);
+  // Company name
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 18px system-ui, sans-serif";
+  ctx.fillText("Sathgen Therapeutics  —  Finance", PAD, 26);
+
+  // Chart title
+  ctx.font = "15px system-ui, sans-serif";
+  ctx.fillText(title || "", PAD, 50);
+
+  // Chart — scaled up
+  ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height,
+                0, TOPBAR, TARGET_W, chartH);
 
   // Footer
   ctx.fillStyle = "#aaaaaa";
-  ctx.font = "10px system-ui, sans-serif";
-  ctx.fillText("Generated " + new Date().toLocaleDateString(), pad, off.height - 4);
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.fillText("Generated " + new Date().toLocaleDateString(),
+               PAD, TOPBAR + chartH + FOOTER);
 
   const a = document.createElement("a");
   a.download = filename; a.href = off.toDataURL("image/png"); a.click();
