@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS companies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     company_type TEXT DEFAULT '',
+    partnership_type TEXT DEFAULT '',
     website TEXT DEFAULT '',
     country TEXT DEFAULT '',
     region TEXT DEFAULT '',
@@ -161,11 +162,15 @@ CREATE TABLE IF NOT EXISTS document_shares (
     created_at TEXT NOT NULL
 );
         """)
+        # Migration: add partnership_type if it doesn't exist yet
+        existing = {r[1] for r in db.execute("PRAGMA table_info(companies)").fetchall()}
+        if 'partnership_type' not in existing:
+            db.execute("ALTER TABLE companies ADD COLUMN partnership_type TEXT DEFAULT ''")
 
 
 # ── Companies ────────────────────────────────────────────────────────────────
 
-def list_companies(search='', company_type='', status='', region='') -> list:
+def list_companies(search='', company_type='', status='', region='', therapeutic_focus='') -> list:
     sql = """
         SELECT c.*,
             (SELECT COUNT(*) FROM contacts ct WHERE ct.company_id = c.id) AS contact_count,
@@ -186,6 +191,9 @@ def list_companies(search='', company_type='', status='', region='') -> list:
     if region:
         sql += " AND c.region LIKE ?"
         params.append(f"%{region}%")
+    if therapeutic_focus:
+        sql += " AND c.therapeutic_focus = ?"
+        params.append(therapeutic_focus)
     sql += " ORDER BY c.name"
     with get_db() as db:
         return _rows(db.execute(sql, params).fetchall())
@@ -200,13 +208,13 @@ def create_company(data: dict) -> int:
     ts = now_iso()
     with get_db() as db:
         cur = db.execute(
-            """INSERT INTO companies (name, company_type, website, country, region,
+            """INSERT INTO companies (name, company_type, partnership_type, website, country, region,
                therapeutic_focus, strategic_fit_score, status, owner, notes, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (data.get('name', ''), data.get('company_type', ''), data.get('website', ''),
-             data.get('country', ''), data.get('region', ''), data.get('therapeutic_focus', ''),
-             int(data.get('strategic_fit_score') or 0), data.get('status', 'active'),
-             data.get('owner', ''), data.get('notes', ''), ts, ts),
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (data.get('name', ''), data.get('company_type', ''), data.get('partnership_type', ''),
+             data.get('website', ''), data.get('country', ''), data.get('region', ''),
+             data.get('therapeutic_focus', ''), int(data.get('strategic_fit_score') or 0),
+             data.get('status', 'active'), data.get('owner', ''), data.get('notes', ''), ts, ts),
         )
         return cur.lastrowid
 
@@ -215,13 +223,13 @@ def update_company(company_id: int, data: dict) -> None:
     ts = now_iso()
     with get_db() as db:
         db.execute(
-            """UPDATE companies SET name=?, company_type=?, website=?, country=?, region=?,
+            """UPDATE companies SET name=?, company_type=?, partnership_type=?, website=?, country=?, region=?,
                therapeutic_focus=?, strategic_fit_score=?, status=?, owner=?, notes=?, updated_at=?
                WHERE id=?""",
-            (data.get('name', ''), data.get('company_type', ''), data.get('website', ''),
-             data.get('country', ''), data.get('region', ''), data.get('therapeutic_focus', ''),
-             int(data.get('strategic_fit_score') or 0), data.get('status', 'active'),
-             data.get('owner', ''), data.get('notes', ''), ts, company_id),
+            (data.get('name', ''), data.get('company_type', ''), data.get('partnership_type', ''),
+             data.get('website', ''), data.get('country', ''), data.get('region', ''),
+             data.get('therapeutic_focus', ''), int(data.get('strategic_fit_score') or 0),
+             data.get('status', 'active'), data.get('owner', ''), data.get('notes', ''), ts, company_id),
         )
 
 

@@ -20,8 +20,34 @@
         <label class="form-label">Company Type</label>
         <select name="company_type" class="form-select">
           <option value="">— Select Type —</option>
-          {% for val, label in [('investor','Investor'),('pharma_partner','Pharma Partner'),('co_development','Co-Development'),('advisor','Advisor'),('strategic','Strategic')] %}
+          {% for val, label in [
+            ('major_pharma','Major Pharma'),
+            ('mid_pharma','Mid-Size Pharma'),
+            ('biotech','Biotech'),
+            ('startup','Startup / Early Stage'),
+            ('cro_cdmo','CRO / CDMO'),
+            ('academic','Academic / Research Institution'),
+            ('vc_pe','VC / PE Firm'),
+            ('government_nonprofit','Government / Non-profit'),
+            ('other','Other')
+          ] %}
           <option value="{{ val }}" {% if company and company.company_type == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Partnership Type <small class="text-muted">(hold Cmd/Ctrl to select multiple)</small></label>
+        <select name="partnership_type" class="form-select" multiple size="6">
+          {% set _pt = (company.partnership_type or '').split(',') if company else [] %}
+          {% for val, label in [
+            ('investor','Investor'),
+            ('pharma_partner','Pharma Partner'),
+            ('co_development','Co-Development'),
+            ('advisor','Advisor'),
+            ('strategic','Strategic Partner'),
+            ('licensing','Licensing')
+          ] %}
+          <option value="{{ val }}" {% if val in _pt %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
@@ -38,8 +64,30 @@
         <input type="text" name="region" value="{{ company.region if company else '' }}" class="form-control" placeholder="e.g. North America, EU">
       </div>
       <div class="form-group">
-        <label class="form-label">Therapeutic Focus</label>
-        <input type="text" name="therapeutic_focus" value="{{ company.therapeutic_focus if company else '' }}" class="form-control" placeholder="e.g. Oncology, Rare Disease">
+        <label class="form-label">Therapeutic Area <small class="text-muted">(hold Cmd/Ctrl to select multiple)</small></label>
+        <select name="therapeutic_focus" class="form-select" multiple size="8">
+          {% set _tf = (company.therapeutic_focus or '').split(',') if company else [] %}
+          {% for val, label in [
+            ('oncology','Oncology'),
+            ('rare_disease','Rare Disease / Orphan'),
+            ('neurology_cns','Neurology / CNS'),
+            ('immunology','Immunology / Inflammation'),
+            ('cardiovascular','Cardiovascular'),
+            ('metabolic','Metabolic / Endocrinology'),
+            ('infectious_disease','Infectious Disease'),
+            ('respiratory','Respiratory'),
+            ('hematology','Hematology'),
+            ('gene_cell_therapy','Gene Therapy / Cell Therapy'),
+            ('ophthalmology','Ophthalmology'),
+            ('dermatology','Dermatology'),
+            ('gastroenterology','Gastroenterology'),
+            ('musculoskeletal','Musculoskeletal'),
+            ('womens_health',"Women's Health"),
+            ('other','Other')
+          ] %}
+          <option value="{{ val }}" {% if val in _tf %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="form-group">
         <label class="form-label">Strategic Fit Score (1–5)</label>

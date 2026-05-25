@@ -313,6 +313,15 @@ body {
   white-space: nowrap;
 }
 
+/* Company type badge */
+.badge-type { background: #dbeafe; color: #1e40af; }
+
+/* Partnership type badge */
+.badge-partner { background: #ede9fe; color: #5b21b6; }
+
+/* Therapeutic area badge */
+.badge-ta { background: #d1fae5; color: #065f46; }
+
 /* Stage badges */
 .stage-initial_contact, .stage-initial_contact { background: #e0f2fe; color: #0369a1; }
 .stage-nda_negotiation { background: #fef3c7; color: #92400e; }
@@ -479,6 +488,11 @@ body {
 }
 
 textarea.form-control { resize: vertical; }
+
+select[multiple].form-select { padding: 4px; }
+select[multiple].form-select option { padding: 5px 8px; border-radius: 4px; }
+select[multiple].form-select option:checked { background: var(--accent); color: #fff; }
+.text-muted { color: var(--text-secondary); font-size: 11px; font-weight: 400; }
 
 .form-control-sm { max-width: 140px; }
 

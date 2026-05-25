@@ -3,6 +3,7 @@ import sys as _sys
 from datetime import datetime
 from pathlib import Path
 
+from typing import List
 from fastapi import FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -106,11 +107,13 @@ async def companies_list(
     company_type: str = Query(""),
     status: str = Query(""),
     region: str = Query(""),
+    therapeutic_focus: str = Query(""),
 ):
     return templates.TemplateResponse("companies.html", ctx(
         request, page="companies",
-        companies=list_companies(search, company_type, status, region),
+        companies=list_companies(search, company_type, status, region, therapeutic_focus),
         search=search, company_type=company_type, status=status, region=region,
+        therapeutic_focus=therapeutic_focus,
     ))
 
 
@@ -123,22 +126,25 @@ async def company_new_form(request: Request):
 
 @app.post("/companies/new")
 async def company_new_post(
+    request: Request,
     name: str = Form(...),
     company_type: str = Form(""),
-    website: str = Form(""),
-    country: str = Form(""),
-    region: str = Form(""),
-    therapeutic_focus: str = Form(""),
     strategic_fit_score: str = Form("0"),
     status: str = Form("active"),
     owner: str = Form(""),
+    website: str = Form(""),
+    country: str = Form(""),
+    region: str = Form(""),
     notes: str = Form(""),
 ):
+    form = await request.form()
+    partnership_type = ",".join(form.getlist("partnership_type"))
+    therapeutic_focus = ",".join(form.getlist("therapeutic_focus"))
     create_company({
-        'name': name, 'company_type': company_type, 'website': website,
-        'country': country, 'region': region, 'therapeutic_focus': therapeutic_focus,
-        'strategic_fit_score': strategic_fit_score, 'status': status,
-        'owner': owner, 'notes': notes,
+        'name': name, 'company_type': company_type, 'partnership_type': partnership_type,
+        'website': website, 'country': country, 'region': region,
+        'therapeutic_focus': therapeutic_focus, 'strategic_fit_score': strategic_fit_score,
+        'status': status, 'owner': owner, 'notes': notes,
     })
     return RedirectResponse("/companies", status_code=303)
 
@@ -166,23 +172,26 @@ async def company_edit_form(request: Request, company_id: int):
 
 @app.post("/companies/{company_id}/edit")
 async def company_edit_post(
+    request: Request,
     company_id: int,
     name: str = Form(...),
     company_type: str = Form(""),
-    website: str = Form(""),
-    country: str = Form(""),
-    region: str = Form(""),
-    therapeutic_focus: str = Form(""),
     strategic_fit_score: str = Form("0"),
     status: str = Form("active"),
     owner: str = Form(""),
+    website: str = Form(""),
+    country: str = Form(""),
+    region: str = Form(""),
     notes: str = Form(""),
 ):
+    form = await request.form()
+    partnership_type = ",".join(form.getlist("partnership_type"))
+    therapeutic_focus = ",".join(form.getlist("therapeutic_focus"))
     update_company(company_id, {
-        'name': name, 'company_type': company_type, 'website': website,
-        'country': country, 'region': region, 'therapeutic_focus': therapeutic_focus,
-        'strategic_fit_score': strategic_fit_score, 'status': status,
-        'owner': owner, 'notes': notes,
+        'name': name, 'company_type': company_type, 'partnership_type': partnership_type,
+        'website': website, 'country': country, 'region': region,
+        'therapeutic_focus': therapeutic_focus, 'strategic_fit_score': strategic_fit_score,
+        'status': status, 'owner': owner, 'notes': notes,
     })
     return RedirectResponse(f"/companies/{company_id}", status_code=303)
 

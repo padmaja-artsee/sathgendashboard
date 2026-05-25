@@ -15,7 +15,9 @@
   <div class="detail-meta-grid">
     <div>
       <h1 class="detail-name">{{ detail.name }}</h1>
-      {% if detail.company_type %}<span class="badge type-{{ detail.company_type }}">{{ detail.company_type | replace('_',' ') | title }}</span>{% endif %}
+      {% if detail.company_type %}<span class="badge badge-type">{{ detail.company_type | replace('_',' ') | title }}</span>{% endif %}
+      {% if detail.partnership_type %}{% for pt in detail.partnership_type.split(',') %}{% if pt %}<span class="badge badge-partner">{{ pt | replace('_',' ') | title }}</span> {% endif %}{% endfor %}{% endif %}
+      {% if detail.therapeutic_focus %}{% for tf in detail.therapeutic_focus.split(',') %}{% if tf %}<span class="badge badge-ta">{{ tf | replace('_',' ') | title }}</span> {% endif %}{% endfor %}{% endif %}
       <span class="badge status-{{ detail.status }}">{{ detail.status }}</span>
     </div>
     <div class="detail-meta-list">

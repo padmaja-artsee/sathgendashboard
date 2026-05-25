@@ -10,18 +10,41 @@
   <form method="get" class="filter-form">
     <input type="text" name="search" value="{{ search }}" placeholder="Search companies…" class="form-control">
     <select name="company_type" class="form-select">
-      <option value="">All Types</option>
-      <option value="investor" {% if company_type=='investor' %}selected{% endif %}>Investor</option>
-      <option value="pharma_partner" {% if company_type=='pharma_partner' %}selected{% endif %}>Pharma Partner</option>
-      <option value="co_development" {% if company_type=='co_development' %}selected{% endif %}>Co-Development</option>
-      <option value="advisor" {% if company_type=='advisor' %}selected{% endif %}>Advisor</option>
-      <option value="strategic" {% if company_type=='strategic' %}selected{% endif %}>Strategic</option>
+      <option value="">All Company Types</option>
+      <option value="major_pharma" {% if company_type=='major_pharma' %}selected{% endif %}>Major Pharma</option>
+      <option value="mid_pharma" {% if company_type=='mid_pharma' %}selected{% endif %}>Mid-Size Pharma</option>
+      <option value="biotech" {% if company_type=='biotech' %}selected{% endif %}>Biotech</option>
+      <option value="startup" {% if company_type=='startup' %}selected{% endif %}>Startup / Early Stage</option>
+      <option value="cro_cdmo" {% if company_type=='cro_cdmo' %}selected{% endif %}>CRO / CDMO</option>
+      <option value="academic" {% if company_type=='academic' %}selected{% endif %}>Academic / Research</option>
+      <option value="vc_pe" {% if company_type=='vc_pe' %}selected{% endif %}>VC / PE Firm</option>
+      <option value="government_nonprofit" {% if company_type=='government_nonprofit' %}selected{% endif %}>Government / Non-profit</option>
+      <option value="other" {% if company_type=='other' %}selected{% endif %}>Other</option>
     </select>
     <select name="status" class="form-select">
       <option value="">All Statuses</option>
       <option value="active" {% if status=='active' %}selected{% endif %}>Active</option>
       <option value="inactive" {% if status=='inactive' %}selected{% endif %}>Inactive</option>
       <option value="on_hold" {% if status=='on_hold' %}selected{% endif %}>On Hold</option>
+    </select>
+    <select name="therapeutic_focus" class="form-select">
+      <option value="">All Therapeutic Areas</option>
+      <option value="oncology" {% if therapeutic_focus=='oncology' %}selected{% endif %}>Oncology</option>
+      <option value="rare_disease" {% if therapeutic_focus=='rare_disease' %}selected{% endif %}>Rare Disease / Orphan</option>
+      <option value="neurology_cns" {% if therapeutic_focus=='neurology_cns' %}selected{% endif %}>Neurology / CNS</option>
+      <option value="immunology" {% if therapeutic_focus=='immunology' %}selected{% endif %}>Immunology / Inflammation</option>
+      <option value="cardiovascular" {% if therapeutic_focus=='cardiovascular' %}selected{% endif %}>Cardiovascular</option>
+      <option value="metabolic" {% if therapeutic_focus=='metabolic' %}selected{% endif %}>Metabolic / Endocrinology</option>
+      <option value="infectious_disease" {% if therapeutic_focus=='infectious_disease' %}selected{% endif %}>Infectious Disease</option>
+      <option value="respiratory" {% if therapeutic_focus=='respiratory' %}selected{% endif %}>Respiratory</option>
+      <option value="hematology" {% if therapeutic_focus=='hematology' %}selected{% endif %}>Hematology</option>
+      <option value="gene_cell_therapy" {% if therapeutic_focus=='gene_cell_therapy' %}selected{% endif %}>Gene / Cell Therapy</option>
+      <option value="ophthalmology" {% if therapeutic_focus=='ophthalmology' %}selected{% endif %}>Ophthalmology</option>
+      <option value="dermatology" {% if therapeutic_focus=='dermatology' %}selected{% endif %}>Dermatology</option>
+      <option value="gastroenterology" {% if therapeutic_focus=='gastroenterology' %}selected{% endif %}>Gastroenterology</option>
+      <option value="musculoskeletal" {% if therapeutic_focus=='musculoskeletal' %}selected{% endif %}>Musculoskeletal</option>
+      <option value="womens_health" {% if therapeutic_focus=='womens_health' %}selected{% endif %}>Women's Health</option>
+      <option value="other" {% if therapeutic_focus=='other' %}selected{% endif %}>Other</option>
     </select>
     <input type="text" name="region" value="{{ region }}" placeholder="Region…" class="form-control form-control-sm">
     <button type="submit" class="btn btn-outline">Filter</button>
@@ -34,17 +57,18 @@
   <table class="table">
     <thead>
       <tr>
-        <th>Name</th><th>Type</th><th>Country</th><th>Therapeutic Focus</th>
-        <th>Fit Score</th><th>Status</th><th>Contacts</th><th>Opps</th><th>Actions</th>
+        <th>Name</th><th>Company Type</th><th>Partnership Type</th><th>Country</th><th>Therapeutic Area</th>
+        <th>Fit</th><th>Status</th><th>Contacts</th><th>Opps</th><th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for c in companies %}
       <tr>
         <td><a href="/companies/{{ c.id }}" class="link-primary">{{ c.name }}</a></td>
-        <td><span class="badge type-{{ c.company_type }}">{{ c.company_type | replace('_',' ') | title if c.company_type else '—' }}</span></td>
+        <td><span class="badge badge-type">{{ c.company_type | replace('_',' ') | title if c.company_type else '—' }}</span></td>
+        <td>{% if c.partnership_type %}{% for pt in c.partnership_type.split(',') %}{% if pt %}<span class="badge badge-partner">{{ pt | replace('_',' ') | title }}</span> {% endif %}{% endfor %}{% else %}—{% endif %}</td>
         <td>{{ c.country or '—' }}</td>
-        <td>{{ c.therapeutic_focus or '—' }}</td>
+        <td>{% if c.therapeutic_focus %}{% for tf in c.therapeutic_focus.split(',') %}{% if tf %}<span class="badge badge-type">{{ tf | replace('_',' ') | title }}</span> {% endif %}{% endfor %}{% else %}—{% endif %}</td>
         <td>
           <span class="stars">
             {% for i in range(1,6) %}{% if i <= c.strategic_fit_score %}★{% else %}☆{% endif %}{% endfor %}

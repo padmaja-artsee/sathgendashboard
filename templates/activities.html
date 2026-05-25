@@ -29,16 +29,16 @@
 <div class="card">
   <table class="table">
     <thead>
-      <tr><th>Date</th><th>Type</th><th>Subject</th><th>Company</th><th>Contact</th><th>Opportunity</th><th>Sentiment</th><th>Owner</th><th>Actions</th></tr>
+      <tr><th>Date</th><th>Company</th><th>Contact</th><th>Type</th><th>Subject</th><th>Opportunity</th><th>Sentiment</th><th>Owner</th><th>Actions</th></tr>
     </thead>
     <tbody>
       {% for a in activities %}
       <tr>
         <td class="text-mono">{{ a.activity_date }}</td>
-        <td><span class="badge type-{{ a.activity_type }}">{{ a.activity_type }}</span></td>
-        <td>{{ a.subject or a.summary[:50] if a.summary else '—' }}</td>
         <td>{% if a.company_id %}<a href="/companies/{{ a.company_id }}">{{ a.company_name }}</a>{% else %}—{% endif %}</td>
         <td>{{ a.contact_name or '—' }}</td>
+        <td><span class="badge type-{{ a.activity_type }}">{{ a.activity_type }}</span></td>
+        <td>{{ a.subject or a.summary[:50] if a.summary else '—' }}</td>
         <td>{% if a.opportunity_id %}<a href="/opportunities/{{ a.opportunity_id }}">{{ a.opportunity_name }}</a>{% else %}—{% endif %}</td>
         <td><span class="badge sentiment-{{ a.sentiment }}">{{ a.sentiment | replace('_',' ') }}</span></td>
         <td>{{ a.owner or '—' }}</td>
