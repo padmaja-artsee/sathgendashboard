@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% set page = "vendors" %}
+{% block title %}Vendors{% endblock %}
+{% block content %}
+<div class="f-page-header">
+  <h1 class="f-title">Vendors</h1>
+  <div class="f-header-controls">
+    {% if saved %}<span class="f-badge f-badge-green">Saved ✓</span>{% endif %}
+    <a href="{{ _base }}/vendors/new" class="f-btn-sm f-btn-primary">+ Add Vendor</a>
+    <a href="{{ _base }}/export/vendors.xlsx" class="f-btn-sm f-btn-outline">↓ Export Excel</a>
+  </div>
+</div>
+
+<div id="f-confirm-modal" class="f-modal-overlay" style="display:none">
+  <div class="f-modal">
+    <p>Delete this vendor?</p>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1rem">
+      <button class="f-btn f-btn-outline" onclick="document.getElementById('f-confirm-modal').style.display='none'">Cancel</button>
+      <button class="f-btn f-btn-danger" id="f-modal-confirm-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+{% if vendors %}
+<table class="f-expense-table">
+  <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Notes</th><th>Actions</th></tr></thead>
+  <tbody>
+  {% for v in vendors %}
+  <tr>
+    <td class="f-bold">{{ v.name }}</td>
+    <td>{{ v.email or "—" }}</td>
+    <td>{{ v.phone or "—" }}</td>
+    <td class="f-text-muted">{{ v.notes or "" }}</td>
+    <td>
+      <a href="{{ _base }}/vendors/{{ v.id }}/edit" class="f-action-btn">Edit</a>
+      <form method="post" action="{{ _base }}/vendors/{{ v.id }}/delete" id="vdel-{{ v.id }}" style="display:inline">
+        <button type="button" class="f-action-btn f-action-del"
+                onclick="showConfirm('vdel-{{ v.id }}')">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="f-empty-state">No vendors yet. <a href="{{ _base }}/vendors/new">Add one.</a></div>
+{% endif %}
+
+<script>
+function showConfirm(id) {
+  const m = document.getElementById('f-confirm-modal');
+  m.dataset.target = id; m.style.display = 'flex';
+}
+document.getElementById('f-modal-confirm-btn').addEventListener('click', function() {
+  document.getElementById(document.getElementById('f-confirm-modal').dataset.target).submit();
+});
+</script>
+{% endblock %}

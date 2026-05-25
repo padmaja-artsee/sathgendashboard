@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% set page = "income_new" if tx_type == "income" else "expense_new" %}
+{% block title %}{{ "Record Income" if tx_type=="income" else "Record Expense" }}{% endblock %}
+{% block content %}
+<div class="f-page-header">
+  <h1 class="f-title">{{ "Edit Income" if transaction else ("Record Income" if tx_type=="income" else "Record Expense") }}</h1>
+</div>
+
+<div class="f-form-card">
+<form method="post"
+      action="{{ _base+'/expenses/'+transaction.id|string+'/edit' if transaction else _base+'/expenses/new' }}"
+      enctype="multipart/form-data">
+  <input type="hidden" name="fy" value="{{ fy }}"/>
+  <input type="hidden" name="tx_type" value="{{ tx_type }}"/>
+
+  <div class="f-form-grid">
+    <div class="f-field">
+      <label class="f-label">Date <span class="f-required">*</span></label>
+      <input type="date" name="date" class="f-input" required
+             value="{{ transaction.date if transaction else today }}"/>
+    </div>
+
+    <div class="f-field">
+      <label class="f-label">
+        {{ "Income Account" if tx_type=="income" else "Expense Account" }}
+        <span class="f-required">*</span>
+      </label>
+      <select name="account_id" class="f-select" required>
+        <option value="">Select account…</option>
+        {% set cur_section = namespace(v="") %}
+        {% for a in accounts %}
+          {% if a.section != cur_section.v %}
+          {% if cur_section.v %}</optgroup>{% endif %}
+          {% set cur_section.v = a.section %}
+          <optgroup label="{{ a.section|upper }}">
+          {% endif %}
+          <option value="{{ a.id }}"
+            {% if transaction and a.id==transaction.account_id %}selected
+            {% elif prefill_account and a.id==prefill_account %}selected{% endif %}>
+            {{ a.name }}
+          </option>
+        {% endfor %}
+        {% if cur_section.v %}</optgroup>{% endif %}
+      </select>
+    </div>
+
+    <div class="f-field">
+      <label class="f-label">Amount <span class="f-required">*</span></label>
+      <input type="number" step="0.01" min="0" name="amount" class="f-input" required
+             value="{{ transaction.amount if transaction else '' }}" placeholder="0.00"/>
+    </div>
+
+    <div class="f-field">
+      <label class="f-label">Currency</label>
+      <select name="currency" class="f-select">
+        {% for cur in ['USD','EUR','GBP','INR','CAD','AUD'] %}
+        <option value="{{ cur }}" {% if (transaction and transaction.currency==cur) or (not transaction and cur=='USD') %}selected{% endif %}>{{ cur }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if tx_type != "income" %}
+    <div class="f-field">
+      <label class="f-label">Vendor
+        <a href="{{ _base }}/vendors/new" class="f-link-small" target="_blank">+ New</a>
+      </label>
+      <select name="vendor_id" class="f-select">
+        <option value="">No vendor</option>
+        {% for v in vendors %}
+        <option value="{{ v.id }}"
+          {% if transaction and v.id==transaction.vendor_id %}selected
+          {% elif prefill_vendor and v.id==prefill_vendor %}selected{% endif %}>
+          {{ v.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    <div class="f-field">
+      <label class="f-label">Payment Account</label>
+      <select name="payment_account_id" class="f-select">
+        <option value="">Not specified</option>
+        {% for p in payment_accounts %}
+        <option value="{{ p.id }}" {% if transaction and p.id==transaction.payment_account_id %}selected{% endif %}>
+          {{ p.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="f-field">
+      <label class="f-label">Reference / Invoice #</label>
+      <input type="text" name="reference" class="f-input"
+             value="{{ transaction.reference if transaction else '' }}" placeholder="INV-0001"/>
+    </div>
+  </div>
+
+  <div class="f-field" style="margin-top:.75rem">
+    <label class="f-label">Notes</label>
+    <textarea name="notes" class="f-textarea" rows="2"
+              placeholder="Optional notes…">{{ transaction.notes if transaction else '' }}</textarea>
+  </div>
+
+  <!-- Receipt upload -->
+  {% if tx_type != "income" %}
+  <div class="f-field" style="margin-top:.75rem">
+    <label class="f-label">Receipt (PDF/Image)</label>
+    {% if transaction and transaction.receipt_filename %}
+    <div class="f-existing-receipt">
+      <a href="{{ _base }}/expenses/{{ transaction.id }}/receipt" target="_blank">📎 View current receipt</a>
+      <span class="f-text-muted"> — upload a new file to replace</span>
+    </div>
+    {% endif %}
+    <div class="f-dropzone" id="dz" onclick="document.getElementById('rzInp').click()">
+      <div class="f-dropzone-inner">
+        <span class="f-drop-icon">📄</span>
+        <span class="f-drop-text" id="dzLabel">Drag & drop or click to upload</span>
+        <span class="f-drop-hint">PDF, PNG, JPG up to 10 MB</span>
+      </div>
+    </div>
+    <input type="file" id="rzInp" name="receipt" accept=".pdf,.png,.jpg,.jpeg"
+           style="display:none" onchange="dzPick(this)"/>
+  </div>
+  {% endif %}
+
+  <div class="f-form-actions">
+    <button type="submit" class="f-btn f-btn-primary">
+      {{ "Update" if transaction else "Save" }}
+    </button>
+    <a href="{{ _base }}/expenses?fy={{ fy }}&tx_type={{ tx_type }}" class="f-btn f-btn-outline">Cancel</a>
+  </div>
+</form>
+</div>
+
+<script>
+function dzPick(inp) {
+  const lbl = document.getElementById('dzLabel');
+  lbl.textContent = inp.files[0] ? inp.files[0].name : 'Drag & drop or click to upload';
+}
+const dz = document.getElementById('dz');
+if (dz) {
+  ['dragover','dragenter'].forEach(e => dz.addEventListener(e, ev=>{ev.preventDefault();dz.classList.add('dz-hover');}));
+  ['dragleave','drop'].forEach(e => dz.addEventListener(e, ev=>{dz.classList.remove('dz-hover');}));
+  dz.addEventListener('drop', ev=>{
+    ev.preventDefault();
+    const f = ev.dataTransfer.files[0];
+    if(f){ const dt=new DataTransfer(); dt.items.add(f); document.getElementById('rzInp').files=dt.files; dzPick(document.getElementById('rzInp')); }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — GBInc Finance{% endblock %}
+{% block content %}
+<div class="f-page-header">
+  <div>
+    <h1 class="f-title">Dashboard</h1>
+    <p class="f-subtitle">FY{{ fy }} &mdash; Apr {{ fy-1 }}–Mar {{ fy }}</p>
+  </div>
+  <div class="f-header-controls">
+    <form method="get" action="{{ _base }}/">
+      <select name="fy" class="f-select-sm" onchange="this.form.submit()">
+        {% for y in fiscal_years %}
+        <option value="{{ y }}" {% if y==fy %}selected{% endif %}>FY{{ y }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% if archived %}
+    <span class="f-badge f-badge-warning">Archived</span>
+    <form method="post" action="{{ _base }}/fy/unarchive" style="display:inline">
+      <input type="hidden" name="fy" value="{{ fy }}"/>
+      <button class="f-btn-sm f-btn-outline">Unarchive</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ _base }}/fy/archive"
+          onsubmit="return confirm('Archive FY{{ fy }}? It will become read-only.')">
+      <input type="hidden" name="fy" value="{{ fy }}"/>
+      <button class="f-btn-sm f-btn-outline">Archive Year</button>
+    </form>
+    {% endif %}
+    <a href="{{ _base }}/budget?fy={{ fy+1 }}" class="f-btn-sm f-btn-primary">+ New Year (FY{{ fy+1 }})</a>
+  </div>
+</div>
+
+<!-- KPI strip -->
+<div class="f-kpi-row">
+  <div class="f-kpi {% if total_income > 0 %}f-kpi-green{% endif %}">
+    <span class="f-kpi-label">Total Income</span>
+    <span class="f-kpi-val">${{ "{:,.0f}".format(total_income) }}</span>
+  </div>
+  <div class="f-kpi {% if total_expenses > 0 %}f-kpi-red{% endif %}">
+    <span class="f-kpi-label">Total Expenses</span>
+    <span class="f-kpi-val">${{ "{:,.0f}".format(total_expenses) }}</span>
+  </div>
+  <div class="f-kpi {% if budget_expenses > 0 %}f-kpi-blue{% endif %}">
+    <span class="f-kpi-label">Budgeted Expenses</span>
+    <span class="f-kpi-val">${{ "{:,.0f}".format(budget_expenses) }}</span>
+  </div>
+  <div class="f-kpi {% if net >= 0 %}f-kpi-green{% else %}f-kpi-red{% endif %}">
+    <span class="f-kpi-label">Net (Income − Expenses)</span>
+    <span class="f-kpi-val">${{ "{:,.0f}".format(net) }}</span>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="f-charts-grid">
+  <div class="f-card f-card-wide">
+    <div class="f-card-header">Monthly Expenses — Budget vs Actuals</div>
+    <canvas id="expChart" height="90"></canvas>
+  </div>
+  <div class="f-card">
+    <div class="f-card-header">Monthly Income — Actuals</div>
+    <canvas id="incChart" height="90"></canvas>
+  </div>
+</div>
+
+<!-- Recent transactions -->
+<div class="f-card" style="margin-top:1rem">
+  <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
+    <span>Recent Transactions</span>
+    <a href="{{ _base }}/expenses/new?fy={{ fy }}" class="f-btn-sm f-btn-primary">+ Record Expense</a>
+  </div>
+  {% if recent %}
+  <table class="f-expense-table">
+    <thead><tr><th>Date</th><th>Account</th><th>Vendor</th><th>Type</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+    {% for t in recent %}
+    <tr>
+      <td>{{ t.date | fmtdate }}</td>
+      <td>{{ t.account_name }}</td>
+      <td>{{ t.vendor_name or "—" }}</td>
+      <td><span class="f-badge {% if t.transaction_type=='income' %}f-badge-green{% else %}f-badge-blue{% endif %}">{{ t.transaction_type }}</span></td>
+      <td class="num">${{ "{:,.2f}".format(t.amount) }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div style="padding:.5rem 1rem"><a href="{{ _base }}/expenses?fy={{ fy }}" class="f-link-small">View all →</a></div>
+  {% else %}
+  <p class="f-empty-state">No transactions recorded yet. <a href="{{ _base }}/expenses/new">Record one now.</a></p>
+  {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+const months = {{ chart_months | tojson }};
+new Chart(document.getElementById('expChart'), {
+  type:'bar',
+  data:{labels:months, datasets:[
+    {label:'Budget',  data:{{ exp_budget | tojson }}, backgroundColor:'rgba(28,86,49,.25)', borderColor:'#1C5631', borderWidth:1},
+    {label:'Actuals', data:{{ exp_actual | tojson }}, backgroundColor:'rgba(192,57,43,.45)', borderColor:'#C0392B', borderWidth:1}
+  ]},
+  options:{responsive:true,plugins:{legend:{position:'bottom'}},
+           scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString()}}}}
+});
+new Chart(document.getElementById('incChart'), {
+  type:'bar',
+  data:{labels:months, datasets:[
+    {label:'Income', data:{{ income_actual | tojson }}, backgroundColor:'rgba(28,86,49,.5)', borderColor:'#1C5631', borderWidth:1}
+  ]},
+  options:{responsive:true,plugins:{legend:{position:'bottom'}},
+           scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString()}}}}
+});
+</script>
+{% endblock %}

@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% set page = "budget" %}
+{% block title %}Budget — FY{{ fy }}{% endblock %}
+{% block content %}
+<div class="f-page-header">
+  <div>
+    <h1 class="f-title">Budget — FY{{ fy }}</h1>
+    <p class="f-subtitle">Apr {{ fy-1 }}–Mar {{ fy }}</p>
+  </div>
+  <div class="f-header-controls">
+    <form method="get" action="{{ _base }}/budget">
+      <select name="fy" class="f-select-sm" onchange="this.form.submit()">
+        {% for y in fiscal_years %}<option value="{{ y }}" {% if y==fy %}selected{% endif %}>FY{{ y }}</option>{% endfor %}
+      </select>
+    </form>
+    {% if not archived %}
+    <label class="f-btn-sm f-btn-outline" style="cursor:pointer">
+      ↑ Upload Budget
+      <input type="file" id="xlUpload" accept=".xlsx" style="display:none" onchange="doUpload(this)"/>
+    </label>
+    <a href="{{ _base }}/budget/template.xlsx?fy={{ fy }}" class="f-btn-sm f-btn-outline">↓ Template</a>
+    <a href="{{ _base }}/export/budget.xlsx?fy={{ fy }}" class="f-btn-sm f-btn-outline">↓ Export Excel</a>
+    {% endif %}
+    {% if saved %}<span class="f-badge f-badge-green">Saved ✓</span>{% endif %}
+    {% if uploaded %}<span class="f-badge f-badge-green">Uploaded {{ uploaded }} values ✓</span>{% endif %}
+    {% if upload_error %}<span class="f-badge f-badge-red">{{ upload_error }}</span>{% endif %}
+    {% if archived %}<span class="f-badge f-badge-warning">Archived — read only</span>{% endif %}
+  </div>
+</div>
+
+<form method="post" action="{{ _base }}/budget" id="budgetForm">
+  <input type="hidden" name="fy" value="{{ fy }}"/>
+
+<div class="f-grid-scroll">
+<table class="f-grid">
+  <thead>
+    <tr>
+      <th class="f-col-label">Line Item</th>
+      {% for m in months %}<th class="f-col-month">{{ month_labels[m] }}</th>{% endfor %}
+      <th class="f-col-total">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for sec in sections %}
+    {% if sec.section != 'totals' %}
+    <tr class="f-section-header-row">
+      <td colspan="{{ months|length + 2 }}">{{ sec.label }}</td>
+    </tr>
+    {% for row in sec.rows %}
+    <tr class="f-row-{{ row.style or 'normal' }}">
+      <td class="f-row-name {% if row.item.is_system==0 %}f-row-custom{% endif %}">
+        {{ row.item.name }}
+        {% if row.item.is_system==0 and not archived %}
+        <form method="post" action="{{ _base }}/budget/delete-line" style="display:inline;margin-left:.25rem">
+          <input type="hidden" name="fy" value="{{ fy }}"/>
+          <input type="hidden" name="lid" value="{{ row.item.id }}"/>
+          <button class="f-row-del-btn" title="Remove line" onclick="return confirm('Remove this line?')">×</button>
+        </form>
+        {% endif %}
+      </td>
+      {% for m in months %}
+      <td>
+        {% if row.item.is_calculated %}
+          <span class="f-calc" id="calc_{{ row.item.id }}_{{ m }}">—</span>
+        {% elif archived %}
+          <span class="f-ro-val">${{ "{:,.0f}".format(row.monthly[m]) }}</span>
+        {% else %}
+          <input type="number" step="0.01" min="0"
+                 name="{{ row.item.id }}_{{ m }}"
+                 value="{{ row.monthly[m] | round(2) if row.monthly[m] else '' }}"
+                 class="f-cell-input" data-lid="{{ row.item.id }}" data-month="{{ m }}"
+                 placeholder="0"/>
+        {% endif %}
+      </td>
+      {% endfor %}
+      <td class="f-col-total">
+        {% if row.item.is_calculated %}
+          <span class="f-calc-total" id="ctot_{{ row.item.id }}">—</span>
+        {% else %}
+          <span class="f-row-total" id="rtot_{{ row.item.id }}">${{ "{:,.0f}".format(row.total) }}</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    {# Add-line buttons for expense sections #}
+    {% if sec.section in ('employee','office','admin','travel') and not archived %}
+    <tr class="f-add-row">
+      <td colspan="{{ months|length + 2 }}">
+        <form method="post" action="{{ _base }}/budget/add-line" class="f-add-line-form">
+          <input type="hidden" name="fy" value="{{ fy }}"/>
+          <input type="hidden" name="section" value="{{ sec.section }}"/>
+          {% if sec.section == 'employee' %}
+          <input type="text" name="name" placeholder="New comp line (e.g. Comp — PG)" class="f-input-sm" required/>
+          <button class="f-btn-xs f-btn-primary" type="submit">+ Add Comp Line</button>
+          {% elif sec.section == 'office' %}
+          <input type="text" name="name" placeholder="New office cost line" class="f-input-sm" required/>
+          <button class="f-btn-xs f-btn-primary" type="submit">+ Add Office Line</button>
+          {% elif sec.section == 'admin' %}
+          <input type="text" name="name" placeholder="New admin/legal line" class="f-input-sm" required/>
+          <button class="f-btn-xs f-btn-primary" type="submit">+ Add Admin Line</button>
+          {% elif sec.section == 'travel' %}
+          <input type="text" name="name" placeholder="New travel/conference line" class="f-input-sm" required/>
+          <button class="f-btn-xs f-btn-primary" type="submit">+ Add Travel Line</button>
+          {% endif %}
+        </form>
+      </td>
+    </tr>
+    {% endif %}
+    {% endif %}
+  {% endfor %}
+
+  {# Grand totals section #}
+  {% for sec in sections %}
+    {% if sec.section == 'totals' %}
+    <tr class="f-section-spacer"><td colspan="{{ months|length + 2 }}"></td></tr>
+    {% for row in sec.rows %}
+    <tr class="f-row-{{ row.style or 'total' }}">
+      <td class="f-row-name">{{ row.item.name }}</td>
+      {% for m in months %}
+      <td><span class="f-calc" id="calc_{{ row.item.id }}_{{ m }}">—</span></td>
+      {% endfor %}
+      <td class="f-col-total"><span class="f-calc-total" id="ctot_{{ row.item.id }}">—</span></td>
+    </tr>
+    {% endfor %}
+    {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if not archived %}
+<div class="f-form-actions" style="margin-top:1rem;align-items:center">
+  <button type="submit" class="f-btn f-btn-primary">Save Budget</button>
+  <button type="reset" class="f-btn f-btn-outline">Reset</button>
+  <span id="autoSaveStatus" style="font-size:.82rem;margin-left:.75rem;transition:opacity 1s;opacity:0"></span>
+</div>
+{% endif %}
+</form>
+
+<script>
+// Section → calc row names
+const SECTIONS = {
+  income:   ['Total Income'],
+  employee: ['Total Employee Costs'],
+  office:   ['Total Office Costs'],
+  admin:    ['Total Admin'],
+  travel:   ['Total Travel'],
+};
+const CALC_NAMES = ['Total Income','Total Employee Costs','Total Office Costs',
+                    'Total Admin','Total Travel','Total Expenses','Net (Income - Expenses)'];
+// Build lid maps
+const items = {{ items | tojson }};
+const nameToLid = {};
+items.forEach(i => nameToLid[i.name] = i.id);
+const lidToItem = {};
+items.forEach(i => lidToItem[i.id] = i);
+const months = {{ months | tojson }};
+
+function getVal(lid, m) {
+  const inp = document.querySelector(`input[name="${lid}_${m}"]`);
+  return inp ? (parseFloat(inp.value)||0) : 0;
+}
+function secItems(sec) { return items.filter(i=>i.section===sec && !i.is_calculated); }
+function fmt(v) { return v===0?'—':'$'+Math.round(v).toLocaleString(); }
+
+function recalc() {
+  months.forEach(m => {
+    let ti=0,tec=0,toc=0,tad=0,ttr=0;
+    secItems('income').forEach(i=>ti+=getVal(i.id,m));
+    secItems('employee').forEach(i=>tec+=getVal(i.id,m));
+    secItems('office').forEach(i=>toc+=getVal(i.id,m));
+    secItems('admin').forEach(i=>tad+=getVal(i.id,m));
+    secItems('travel').forEach(i=>ttr+=getVal(i.id,m));
+    const tex=tec+toc+tad+ttr, net=ti-tex;
+    const map={'Total Income':ti,'Total Employee Costs':tec,'Total Office Costs':toc,
+               'Total Admin':tad,'Total Travel':ttr,'Total Expenses':tex,'Net (Income - Expenses)':net};
+    Object.entries(map).forEach(([name,val])=>{
+      const lid=nameToLid[name];
+      if(!lid) return;
+      const el=document.getElementById(`calc_${lid}_${m}`);
+      if(el){ el.textContent=fmt(val); el.className='f-calc'+(val<0?' f-neg':''); }
+    });
+  });
+  // Row totals
+  items.filter(i=>!i.is_calculated).forEach(i=>{
+    const tot = months.reduce((s,m)=>s+getVal(i.id,m),0);
+    const el=document.getElementById(`rtot_${i.id}`);
+    if(el) el.textContent='$'+Math.round(tot).toLocaleString();
+  });
+  // Calc totals
+  CALC_NAMES.forEach(name=>{
+    const lid=nameToLid[name];
+    if(!lid) return;
+    const tot = months.reduce((s,m)=>{
+      const el=document.getElementById(`calc_${lid}_${m}`);
+      return s+(el ? (parseFloat(el.textContent.replace(/[$,]/g,''))||0) : 0);
+    },0);
+    const el=document.getElementById(`ctot_${lid}`);
+    if(el){ el.textContent=fmt(tot); el.className='f-calc-total'+(tot<0?' f-neg':''); }
+  });
+}
+// ── Auto-save ──────────────────────────────────────────────────────────────
+const BASE = '{{ _base }}';
+const autoStatus = document.getElementById('autoSaveStatus');
+let saveTimer = null;
+
+function showStatus(msg, colour) {
+  if (!autoStatus) return;
+  autoStatus.textContent = msg;
+  autoStatus.style.color = colour;
+  autoStatus.style.opacity = '1';
+}
+
+function autoSave() {
+  // Build FormData manually — avoids picking up nested sub-form fields
+  // (delete-line / add-line forms) which pollute FormData(form).
+  const fd = new FormData();
+  fd.append('fy', '{{ fy }}');
+  document.querySelectorAll('#budgetForm .f-cell-input').forEach(inp => {
+    fd.append(inp.name, inp.value !== '' ? inp.value : '0');
+  });
+  showStatus('Saving…', '#888');
+  fetch(BASE + '/budget/autosave', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        showStatus('Saved ✓', '#2e7d32');
+        setTimeout(() => { if (autoStatus) autoStatus.style.opacity = '0'; }, 2000);
+      } else {
+        showStatus('Save failed', '#c62828');
+      }
+    })
+    .catch(() => showStatus('Save failed', '#c62828'));
+}
+
+function scheduleAutoSave() {
+  recalc();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(autoSave, 600);   // 600 ms debounce
+}
+
+document.querySelectorAll('.f-cell-input').forEach(inp => {
+  inp.addEventListener('input', scheduleAutoSave);
+  inp.addEventListener('change', scheduleAutoSave);  // catches spinner clicks
+});
+recalc();
+
+// Upload helper
+function doUpload(inp) {
+  if(!inp.files[0]) return;
+  const fd = new FormData();
+  fd.append('fy','{{ fy }}');
+  fd.append('file', inp.files[0]);
+  fetch(BASE + '/budget/upload', {method:'POST', body:fd})
+    .then(r => { if(r.ok) window.location = r.url; else alert('Upload failed.'); });
+}
+</script>
+{% endblock %}

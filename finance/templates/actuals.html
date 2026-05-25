@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% set page = "actuals" %}
+{% block title %}Actuals — FY{{ fy }}{% endblock %}
+{% block content %}
+<div class="f-page-header">
+  <div>
+    <h1 class="f-title">Actuals — FY{{ fy }}</h1>
+    <p class="f-subtitle">Auto-populated from recorded transactions. Manual additions can be appended below each cell.</p>
+  </div>
+  <div class="f-header-controls">
+    <form method="get" action="{{ _base }}/actuals">
+      <select name="fy" class="f-select-sm" onchange="this.form.submit()">
+        {% for y in fiscal_years %}<option value="{{ y }}" {% if y==fy %}selected{% endif %}>FY{{ y }}</option>{% endfor %}
+      </select>
+    </form>
+    <a href="{{ _base }}/expenses/new?fy={{ fy }}" class="f-btn-sm f-btn-primary">+ Record Expense</a>
+    <a href="{{ _base }}/export/actuals.xlsx?fy={{ fy }}" class="f-btn-sm f-btn-outline">↓ Export Excel</a>
+    {% if saved %}<span class="f-badge f-badge-green">Saved ✓</span>{% endif %}
+    {% if archived %}<span class="f-badge f-badge-warning">Archived</span>{% endif %}
+  </div>
+</div>
+
+<div class="f-legend-bar">
+  <span class="f-rollup-badge">$0</span> From transactions &nbsp;
+  <span class="f-manual-badge">+$0</span> Manual addition
+</div>
+
+<div class="f-grid-scroll">
+<table class="f-grid">
+  <thead>
+    <tr>
+      <th class="f-col-label">Line Item</th>
+      {% for m in months %}<th class="f-col-month">{{ month_labels[m] }}</th>{% endfor %}
+      <th class="f-col-total">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for sec in sections %}
+    {% if sec.section != 'totals' %}
+    <tr class="f-section-header-row">
+      <td colspan="{{ months|length + 2 }}">{{ sec.label }}</td>
+    </tr>
+    {% for row in sec.rows %}
+    <tr class="f-row-{{ row.style or 'normal' }}">
+      <td class="f-row-name">{{ row.item.name }}</td>
+      {% for m in months %}
+      <td>
+        <div class="f-hybrid-cell">
+          {% if row.item.is_calculated %}
+            <span class="f-ro-val f-calc-cell" data-lid="{{ row.item.id }}" data-month="{{ m }}">
+              {{ "${:,.0f}".format(row.monthly_t[m]) if row.monthly_t[m] else '—' }}
+            </span>
+          {% else %}
+            {% if row.monthly_r[m] %}
+            <span class="f-rollup-badge">${{ "{:,.0f}".format(row.monthly_r[m]) }}</span>
+            {% endif %}
+            {% if row.monthly_m[m] %}
+            <span class="f-manual-badge">+${{ "{:,.0f}".format(row.monthly_m[m]) }}</span>
+            {% endif %}
+            {% if not row.monthly_r[m] and not row.monthly_m[m] %}
+            <span class="f-text-muted">—</span>
+            {% endif %}
+          {% endif %}
+        </div>
+      </td>
+      {% endfor %}
+      <td class="f-col-total">
+        <span class="{% if row.item.is_calculated %}f-calc-total-cell{% else %}f-ro-total{% endif %}"
+              data-lid="{{ row.item.id }}">
+          {{ "${:,.0f}".format(row.total) if row.total else '—' }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+    {% endif %}
+  {% endfor %}
+
+  {% for sec in sections %}
+    {% if sec.section == 'totals' %}
+    <tr class="f-section-spacer"><td colspan="{{ months|length + 2 }}"></td></tr>
+    {% for row in sec.rows %}
+    <tr class="f-row-{{ row.style or 'total' }}">
+      <td class="f-row-name">{{ row.item.name }}</td>
+      {% for m in months %}
+      <td><span class="f-ro-val">${{ "{:,.0f}".format(row.monthly_t[m]) if row.monthly_t[m] else '—' }}</span></td>
+      {% endfor %}
+      <td class="f-col-total"><span class="f-ro-val">${{ "{:,.0f}".format(row.total) if row.total else '—' }}</span></td>
+    </tr>
+    {% endfor %}
+    {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<!-- Manual adjustments accordion -->
+{% if not archived %}
+<details class="f-manual-details" style="margin-top:1.5rem">
+  <summary class="f-section-title">Manual Additions (amounts not entered as transactions)</summary>
+  <form method="post" action="{{ _base }}/actuals/manual">
+    <input type="hidden" name="fy" value="{{ fy }}"/>
+    <div class="f-grid-scroll">
+    <table class="f-grid f-grid-compact">
+      <thead><tr>
+        <th class="f-col-label">Line Item</th>
+        {% for m in months %}<th class="f-col-month">{{ month_labels[m] }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for sec in sections %}
+        {% if sec.section not in ('totals',) %}
+        {% for row in sec.rows %}
+          {% if not row.item.is_calculated %}
+          <tr>
+            <td class="f-row-name">{{ row.item.name }}</td>
+            {% for m in months %}
+            <td><input type="number" step="0.01" min="0"
+                        name="{{ row.item.id }}_{{ m }}"
+                        value="{{ row.monthly_m[m] | round(2) if row.monthly_m[m] else '' }}"
+                        class="f-cell-input" placeholder="0"/></td>
+            {% endfor %}
+          </tr>
+          {% endif %}
+        {% endfor %}
+        {% endif %}
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <div class="f-form-actions"><button class="f-btn f-btn-primary">Save Manual Additions</button></div>
+  </form>
+</details>
+{% endif %}
+{% endblock %}
