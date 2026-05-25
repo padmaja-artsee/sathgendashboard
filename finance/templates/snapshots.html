@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set page = "snapshots" %}
+{% block title %}Financial Snapshots{% endblock %}
+{% block content %}
+<div class="f-page-header">
+  <div>
+    <h1 class="f-title">Financial Snapshots</h1>
+    <p class="f-subtitle">Point-in-time saves of your financials. Create them from the Analysis tab.</p>
+  </div>
+  <a href="{{ _base }}/analysis" class="f-btn-sm f-btn-outline">← Analysis</a>
+</div>
+
+{% if saved %}
+<div class="f-alert f-alert-success">Snapshot saved successfully.</div>
+{% endif %}
+{% if deleted %}
+<div class="f-alert f-alert-warn">Snapshot deleted.</div>
+{% endif %}
+
+{% if snapshots %}
+<div style="display:grid;gap:.75rem;margin-top:.5rem">
+  {% for s in snapshots %}
+  <div class="f-snapshot-card">
+    <div class="f-snapshot-main">
+      <div class="f-snapshot-name">{{ s.name }}</div>
+      <div class="f-snapshot-meta">
+        As of <strong>{{ s.snapshot_date }}</strong>
+        &nbsp;·&nbsp; FY{{ s.fiscal_year }}
+        {% if s.notes %}&nbsp;·&nbsp; {{ s.notes }}{% endif %}
+        &nbsp;·&nbsp; <span class="f-muted">Saved {{ s.created_at[:10] }}</span>
+      </div>
+    </div>
+    <div class="f-snapshot-actions">
+      <a href="{{ _base }}/snapshots/{{ s.id }}" class="f-btn-sm f-btn-outline">View</a>
+      <a href="{{ _base }}/export/snapshot/{{ s.id }}.xlsx" class="f-btn-sm f-btn-outline">↓ Excel</a>
+      <form method="post" action="{{ _base }}/snapshots/{{ s.id }}/delete"
+            style="display:inline" id="del-snap-{{ s.id }}"
+            onsubmit="return confirm('Delete this snapshot?')">
+        <button class="f-btn-sm f-btn-danger">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="f-empty-state">
+  <p>No snapshots saved yet.</p>
+  <p>Go to <a href="{{ _base }}/analysis">Analysis</a> and use "Save Financial Snapshot" to create one.</p>
+</div>
+{% endif %}
+{% endblock %}

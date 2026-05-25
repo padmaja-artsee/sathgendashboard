@@ -5,7 +5,7 @@
 <div class="f-page-header">
   <div>
     <h1 class="f-title">Analysis — FY{{ fy }}</h1>
-    <p class="f-subtitle">Budget vs actuals by category.</p>
+    <p class="f-subtitle">Budget vs actuals with interactive charts and filters.</p>
   </div>
   <div class="f-header-controls" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
     <form method="get" action="{{ _base }}/analysis">
@@ -14,6 +14,7 @@
       </select>
     </form>
     <a href="{{ _base }}/export/analysis.xlsx?fy={{ fy }}" class="f-btn-sm f-btn-outline">↓ Export Excel</a>
+    <a href="{{ _base }}/snapshots" class="f-btn-sm f-btn-outline">📷 Snapshots</a>
   </div>
 </div>
 
@@ -34,67 +35,310 @@
     <span class="f-sum-key">Variance</span>
     <span class="f-sum-val {% if s.variance >= 0 %}f-var-pos{% else %}f-var-neg{% endif %}">
       {% if s.variance >= 0 %}+{% endif %}${{ "{:,.0f}".format(s.variance) }}
-      {% if s.var_pct is not none %}
-      <small>({{ "{:.0f}".format(s.var_pct) }}%)</small>
-      {% endif %}
+      {% if s.var_pct is not none %}<small>({{ "{:.0f}".format(s.var_pct) }}%)</small>{% endif %}
     </span>
   </div>
 </div>
 {% endfor %}
 </div>
 
-<!-- Charts -->
-<div class="f-charts-grid" style="margin-top:1.5rem">
-  <div class="f-card f-card-wide">
-    <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
-      <span>Monthly Expenses — Budget vs Actuals</span>
-      <button onclick="saveChart('expChart','Sathgen-Expenses-FY{{ fy }}.png')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
-    </div>
-    <canvas id="expChart" height="100"></canvas>
+<!-- ── Filter bar ── -->
+<div class="f-filter-bar" style="margin-top:1.5rem">
+  <div class="f-filter-group">
+    <label class="f-filter-label">Category</label>
+    <select id="filterCategory" class="f-select-sm" onchange="onCategoryChange()">
+      <option value="all">All Categories</option>
+      <option value="income">Income</option>
+      <option value="employee">Employee Costs</option>
+      <option value="office">Office Costs</option>
+      <option value="admin">Bank / Legal / Admin</option>
+      <option value="travel">Conference / Travel</option>
+    </select>
   </div>
-  <div class="f-card">
-    <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
-      <span>Monthly Income</span>
-      <button onclick="saveChart('incChart','Sathgen-Income-FY{{ fy }}.png')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
-    </div>
-    <canvas id="incChart" height="100"></canvas>
+  <div class="f-filter-group">
+    <label class="f-filter-label">Line Item</label>
+    <select id="filterLineItem" class="f-select-sm" onchange="renderCharts()">
+      <option value="all">All Line Items</option>
+    </select>
   </div>
+  <div class="f-filter-group">
+    <label class="f-filter-label">Chart Type</label>
+    <div class="f-chart-type-btns">
+      <button class="f-type-btn active" data-type="bar" onclick="setChartType('bar',this)">Bar</button>
+      <button class="f-type-btn" data-type="line" onclick="setChartType('line',this)">Line</button>
+      <button class="f-type-btn" data-type="pie" onclick="setChartType('pie',this)">Breakdown</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Charts ── -->
+<div id="chartsContainer" style="margin-top:1rem;display:grid;gap:1rem">
+
+  <!-- Main chart: Budget vs Actual -->
+  <div class="f-card f-card-wide" id="mainChartCard">
+    <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
+      <span id="mainChartTitle">Monthly Budget vs Actuals</span>
+      <button onclick="downloadChart('mainChart','Sathgen-BudgetVsActual-FY{{ fy }}.png')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
+    </div>
+    <canvas id="mainChart" height="90"></canvas>
+  </div>
+
+  <!-- Breakdown pie/donut (hidden when bar/line active) -->
+  <div class="f-card" id="breakdownCard" style="display:none;max-width:480px">
+    <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Expense Breakdown by Category</span>
+      <button onclick="downloadChart('breakdownChart','Sathgen-Breakdown-FY{{ fy }}.png')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
+    </div>
+    <canvas id="breakdownChart" height="200"></canvas>
+  </div>
+
+  <!-- Net trend line (always visible in bar/line mode) -->
+  <div class="f-card f-card-wide" id="netChartCard">
+    <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Cumulative Net (Income − Expenses)</span>
+      <button onclick="downloadChart('netChart','Sathgen-NetTrend-FY{{ fy }}.png')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
+    </div>
+    <canvas id="netChart" height="70"></canvas>
+  </div>
+</div>
+
+<!-- ── Save Snapshot ── -->
+<div class="f-card" style="margin-top:1.5rem;max-width:640px">
+  <div class="f-card-header">Save Financial Snapshot</div>
+  <form method="post" action="{{ _base }}/snapshots/save" style="padding:1rem;display:grid;gap:.75rem">
+    <input type="hidden" name="fy" value="{{ fy }}">
+    <div class="f-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+      <div>
+        <label class="f-label">Snapshot Name <span style="color:var(--red)">*</span></label>
+        <input type="text" name="name" class="f-input" required placeholder="e.g. Q2 Review, Board Deck June"/>
+      </div>
+      <div>
+        <label class="f-label">As of Date <span style="color:var(--red)">*</span></label>
+        <input type="date" name="snapshot_date" class="f-input" required value="{{ '' }}"/>
+      </div>
+    </div>
+    <div>
+      <label class="f-label">Notes (optional)</label>
+      <input type="text" name="notes" class="f-input" placeholder="Optional context for this snapshot"/>
+    </div>
+    <div>
+      <button type="submit" class="f-btn f-btn-primary">📷 Save Snapshot</button>
+      <a href="{{ _base }}/snapshots" class="f-btn f-btn-outline" style="margin-left:.5rem">View All Snapshots</a>
+    </div>
+  </form>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
-const months = {{ chart_months | tojson }};
-new Chart(document.getElementById('expChart'), {
-  type:'bar',
-  data:{labels:months, datasets:[
-    {label:'Budget',  data:{{ exp_budget  | tojson }}, backgroundColor:'rgba(28,86,49,.25)', borderColor:'#1C5631', borderWidth:1},
-    {label:'Actuals', data:{{ exp_actual  | tojson }}, backgroundColor:'rgba(192,57,43,.45)', borderColor:'#C0392B', borderWidth:1}
-  ]},
-  options:{responsive:true,plugins:{legend:{position:'bottom'}},
-           scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString()}}}}
-});
-new Chart(document.getElementById('incChart'), {
-  type:'bar',
-  data:{labels:months, datasets:[
-    {label:'Income Actual',data:{{ income_actual | tojson }},backgroundColor:'rgba(28,86,49,.5)',borderColor:'#1C5631',borderWidth:1}
-  ]},
-  options:{responsive:true,plugins:{legend:{position:'bottom'}},
-           scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString()}}}}
-});
+const MONTHS      = {{ chart_months | tojson }};
+const LINE_DATA   = {{ line_data_json }};
+const SEC_TOTALS  = {{ section_totals_json }};
+const ALL_ITEMS   = {{ items | tojson }};
 
-function saveChart(canvasId, filename) {
-  const canvas = document.getElementById(canvasId);
-  // Draw onto a white-background canvas so PNG isn't transparent
-  const offscreen = document.createElement('canvas');
-  offscreen.width = canvas.width; offscreen.height = canvas.height;
-  const ctx = offscreen.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, offscreen.width, offscreen.height);
-  ctx.drawImage(canvas, 0, 0);
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = offscreen.toDataURL('image/png');
-  link.click();
+const SECTION_LABELS = {
+  income: "Income", employee: "Employee Costs",
+  office: "Office Costs", admin: "Bank/Legal/Admin", travel: "Conference/Travel"
+};
+const PIE_COLORS = [
+  "rgba(28,86,49,.75)","rgba(41,128,185,.75)","rgba(142,68,173,.75)",
+  "rgba(211,84,0,.75)","rgba(192,57,43,.75)","rgba(39,174,96,.75)",
+  "rgba(52,152,219,.75)","rgba(155,89,182,.75)","rgba(230,126,34,.75)",
+];
+
+let chartType   = "bar";
+let mainChartObj, netChartObj, breakdownObj;
+
+function onCategoryChange() {
+  const cat = document.getElementById("filterCategory").value;
+  const sel = document.getElementById("filterLineItem");
+  sel.innerHTML = '<option value="all">All Line Items</option>';
+  ALL_ITEMS
+    .filter(i => cat === "all" || i.section === cat)
+    .forEach(i => {
+      const opt = document.createElement("option");
+      opt.value = i.id; opt.textContent = i.name;
+      sel.appendChild(opt);
+    });
+  renderCharts();
 }
+
+function setChartType(type, btn) {
+  chartType = type;
+  document.querySelectorAll(".f-type-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const isPie = type === "pie";
+  document.getElementById("mainChartCard").style.display   = isPie ? "none" : "";
+  document.getElementById("netChartCard").style.display    = isPie ? "none" : "";
+  document.getElementById("breakdownCard").style.display   = isPie ? "" : "none";
+  renderCharts();
+}
+
+function getFilteredData() {
+  const cat  = document.getElementById("filterCategory").value;
+  const item = document.getElementById("filterLineItem").value;
+
+  let budget = new Array(12).fill(0);
+  let actual = new Array(12).fill(0);
+  let label  = "All Categories";
+
+  const entries = Object.entries(LINE_DATA).filter(([id, d]) => {
+    if (cat !== "all" && d.section !== cat) return false;
+    if (item !== "all" && String(id) !== String(item)) return false;
+    return true;
+  });
+
+  entries.forEach(([id, d]) => {
+    d.budget.forEach((v, i) => budget[i] += v);
+    d.actual.forEach((v, i) => actual[i] += v);
+  });
+
+  if (item !== "all") {
+    const found = ALL_ITEMS.find(i => String(i.id) === String(item));
+    label = found ? found.name : label;
+  } else if (cat !== "all") {
+    label = SECTION_LABELS[cat] || cat;
+  }
+
+  return { budget, actual, label };
+}
+
+function getNetData() {
+  // Cumulative net: sum(income) - sum(expenses) per month, running
+  let incomeActual  = new Array(12).fill(0);
+  let expenseActual = new Array(12).fill(0);
+  Object.entries(LINE_DATA).forEach(([id, d]) => {
+    if (d.section === "income")
+      d.actual.forEach((v, i) => incomeActual[i] += v);
+    else
+      d.actual.forEach((v, i) => expenseActual[i] += v);
+  });
+  let running = 0;
+  return MONTHS.map((_, i) => {
+    running += incomeActual[i] - expenseActual[i];
+    return running;
+  });
+}
+
+function renderCharts() {
+  if (chartType === "pie") { renderBreakdown(); return; }
+  const { budget, actual, label } = getFilteredData();
+
+  document.getElementById("mainChartTitle").textContent =
+    `Monthly Budget vs Actuals — ${label}`;
+
+  if (mainChartObj) mainChartObj.destroy();
+  mainChartObj = new Chart(document.getElementById("mainChart"), {
+    type: chartType,
+    data: {
+      labels: MONTHS,
+      datasets: [
+        { label: "Budget",  data: budget,
+          backgroundColor: "rgba(28,86,49,.25)", borderColor: "#1C5631", borderWidth: 2,
+          fill: chartType === "line" ? false : true, tension: .35 },
+        { label: "Actuals", data: actual,
+          backgroundColor: "rgba(192,57,43,.35)", borderColor: "#C0392B", borderWidth: 2,
+          fill: chartType === "line" ? false : true, tension: .35 },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: "bottom" } },
+      scales: { y: { beginAtZero: true,
+        ticks: { callback: v => "$" + v.toLocaleString() } } }
+    }
+  });
+
+  // Net trend
+  const net = getNetData();
+  if (netChartObj) netChartObj.destroy();
+  netChartObj = new Chart(document.getElementById("netChart"), {
+    type: "line",
+    data: {
+      labels: MONTHS,
+      datasets: [{
+        label: "Cumulative Net",
+        data: net,
+        borderColor: "#1C5631", backgroundColor: "rgba(28,86,49,.1)",
+        borderWidth: 2, fill: true, tension: .4,
+        pointBackgroundColor: net.map(v => v >= 0 ? "#1C5631" : "#C0392B"),
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: "bottom" } },
+      scales: { y: { ticks: { callback: v => "$" + v.toLocaleString() } } }
+    }
+  });
+}
+
+function renderBreakdown() {
+  const item = document.getElementById("filterLineItem").value;
+
+  let labels = [], dataB = [], dataA = [], colors = [];
+  let idx = 0;
+
+  if (item !== "all") {
+    // Single line item — show monthly actuals as pie slices
+    const d = LINE_DATA[item];
+    if (d) {
+      MONTHS.forEach((m, i) => {
+        if (d.actual[i] > 0) {
+          labels.push(m); dataA.push(d.actual[i]);
+          colors.push(PIE_COLORS[i % PIE_COLORS.length]);
+        }
+      });
+    }
+  } else {
+    // Section breakdown — YTD actuals per section
+    Object.entries(SEC_TOTALS)
+      .filter(([sec]) => sec !== "income")
+      .forEach(([sec, d]) => {
+        const total = d.actual.reduce((a, b) => a + b, 0);
+        if (total > 0) {
+          labels.push(SECTION_LABELS[sec]); dataA.push(total);
+          colors.push(PIE_COLORS[idx++ % PIE_COLORS.length]);
+        }
+      });
+  }
+
+  if (breakdownObj) breakdownObj.destroy();
+  breakdownObj = new Chart(document.getElementById("breakdownChart"), {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{ data: dataA, backgroundColor: colors, borderWidth: 2 }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: "right" },
+        tooltip: { callbacks: { label: ctx => {
+          const v = ctx.parsed;
+          const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+          return ` $${v.toLocaleString()} (${(v/total*100).toFixed(1)}%)`;
+        }}}
+      }
+    }
+  });
+}
+
+function downloadChart(canvasId, filename) {
+  const canvas = document.getElementById(canvasId);
+  const off = document.createElement("canvas");
+  off.width = canvas.width; off.height = canvas.height;
+  const ctx = off.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, off.width, off.height);
+  ctx.drawImage(canvas, 0, 0);
+  const a = document.createElement("a");
+  a.download = filename; a.href = off.toDataURL("image/png"); a.click();
+}
+
+// Set today's date on the snapshot date picker
+document.addEventListener("DOMContentLoaded", () => {
+  const dp = document.querySelector("input[name=snapshot_date]");
+  if (dp && !dp.value) dp.value = new Date().toISOString().slice(0,10);
+  renderCharts();
+});
 </script>
 {% endblock %}

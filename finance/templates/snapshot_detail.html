@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% set page = "snapshots" %}
+{% block title %}Snapshot: {{ snap.name }}{% endblock %}
+{% block content %}
+<div class="f-page-header">
+  <div>
+    <h1 class="f-title">{{ snap.name }}</h1>
+    <p class="f-subtitle">
+      Financials as of <strong>{{ snap.snapshot_date }}</strong> · FY{{ snap.fiscal_year }}
+      {% if snap.notes %} · {{ snap.notes }}{% endif %}
+    </p>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center">
+    <a href="{{ _base }}/export/snapshot/{{ snap.id }}.xlsx" class="f-btn-sm f-btn-outline">↓ Export Excel</a>
+    <button onclick="downloadChart('snapChart','Snapshot-{{ snap.name|replace(' ','-') }}-{{ snap.snapshot_date }}.png')" class="f-btn-sm f-btn-outline">↓ Save Chart</button>
+    <a href="{{ _base }}/snapshots" class="f-btn-sm f-btn-outline">← All Snapshots</a>
+  </div>
+</div>
+
+<!-- Chart -->
+<div class="f-card f-card-wide" style="margin-bottom:1rem">
+  <div class="f-card-header">Budget vs Actuals at Snapshot Date</div>
+  <canvas id="snapChart" height="90"></canvas>
+</div>
+
+<!-- Grid table -->
+{% set SECTION_ORDER = ["income","employee","office","admin","travel","totals"] %}
+{% set SECTION_LABELS = {"income":"Income","employee":"Employee Costs","office":"Office Costs","admin":"Bank/Legal/Admin","travel":"Conference/Travel","totals":"Totals"} %}
+
+<div class="f-card" style="overflow-x:auto">
+<table class="f-grid-table" style="font-size:.78rem;white-space:nowrap">
+  <thead>
+    <tr>
+      <th style="text-align:left;min-width:200px">Line Item</th>
+      {% for m in fy_months %}<th>{{ month_labels[m] }}</th>{% endfor %}
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% set prev_sec = namespace(v="") %}
+  {% for item in snap.items %}
+    {% if item.section != prev_sec.v %}
+    <tr class="f-pl-section-hdr">
+      <td colspan="{{ fy_months|length + 2 }}">{{ SECTION_LABELS.get(item.section, item.section) }}</td>
+    </tr>
+    {% set prev_sec.v = item.section %}
+    {% endif %}
+
+    {% set is_calc = item.is_calculated %}
+    <tr class="{% if is_calc %}f-pl-subtotal{% else %}f-pl-row{% endif %}">
+      <td class="f-pl-name {% if not is_calc %}f-pl-indent{% endif %}">{{ item.name }}</td>
+      {% set row_total = namespace(b=0, a=0) %}
+      {% for m in fy_months %}
+        {% set akey = "a_" ~ item.id ~ "_" ~ m %}
+        {% set bkey = "b_" ~ item.id ~ "_" ~ m %}
+        {% set av = snap.grid.get(akey, 0) or 0 %}
+        {% set bv = snap.grid.get(bkey, 0) or 0 %}
+        {% set row_total.b = row_total.b + bv %}
+        {% set row_total.a = row_total.a + av %}
+        <td class="f-pl-num" style="color:{% if av > bv and item.section != 'income' %}var(--red){% else %}inherit{% endif %}">
+          {% if av != 0 %}${{ "{:,.0f}".format(av) }}{% else %}<span class="f-muted">—</span>{% endif %}
+        </td>
+      {% endfor %}
+      <td class="f-pl-num" style="font-weight:600">
+        {% if row_total.a != 0 %}${{ "{:,.0f}".format(row_total.a) }}{% else %}—{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+const snapData = {{ snap.grid_json }};
+const months   = {{ chart_months | tojson }};
+const FY_MONTHS = {{ fy_months | tojson }};
+
+// Parse budget vs actual by month
+const budget = new Array(12).fill(0);
+const actual = new Array(12).fill(0);
+Object.entries(snapData).forEach(([key, val]) => {
+  const parts = key.split("_");
+  if (parts[0] === "b") {
+    const mi = FY_MONTHS.indexOf(parseInt(parts[2]));
+    if (mi >= 0) budget[mi] += val;
+  } else if (parts[0] === "a") {
+    const mi = FY_MONTHS.indexOf(parseInt(parts[2]));
+    if (mi >= 0) actual[mi] += val;
+  }
+});
+
+new Chart(document.getElementById("snapChart"), {
+  type: "bar",
+  data: {
+    labels: months,
+    datasets: [
+      { label:"Budget",  data:budget, backgroundColor:"rgba(28,86,49,.25)", borderColor:"#1C5631", borderWidth:2 },
+      { label:"Actuals", data:actual, backgroundColor:"rgba(192,57,43,.35)", borderColor:"#C0392B", borderWidth:2 },
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{legend:{position:"bottom"}},
+    scales:{y:{beginAtZero:true, ticks:{callback:v=>"$"+v.toLocaleString()}}}
+  }
+});
+
+function downloadChart(canvasId, filename) {
+  const canvas = document.getElementById(canvasId);
+  const off = document.createElement("canvas");
+  off.width = canvas.width; off.height = canvas.height;
+  const ctx = off.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0,0,off.width,off.height);
+  ctx.drawImage(canvas,0,0);
+  const a = document.createElement("a");
+  a.download = filename; a.href = off.toDataURL("image/png"); a.click();
+}
+</script>
+{% endblock %}

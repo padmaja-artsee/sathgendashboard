@@ -328,6 +328,42 @@ body { font-family: var(--font); color: var(--text); background: var(--grey); di
   @page { margin: 1.5cm 1.8cm; }
 }
 
+/* ─── Analysis filter bar ─── */
+.f-filter-bar { display:flex; gap:1.25rem; align-items:flex-end; flex-wrap:wrap; background:#fff; border:1px solid var(--grey-b); border-radius:8px; padding:.75rem 1rem; }
+.f-filter-group { display:flex; flex-direction:column; gap:.25rem; }
+.f-filter-label { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+.f-chart-type-btns { display:flex; gap:.25rem; }
+.f-type-btn { padding:.28rem .75rem; border:1px solid var(--grey-b); border-radius:5px; background:#fff; font-size:.8rem; cursor:pointer; color:var(--text); transition: background .15s, color .15s; }
+.f-type-btn:hover { background:var(--grey); }
+.f-type-btn.active { background:var(--green); color:#fff; border-color:var(--green); }
+
+/* ─── Snapshot cards ─── */
+.f-snapshot-card { display:flex; align-items:center; justify-content:space-between; gap:1rem; background:#fff; border:1px solid var(--grey-b); border-radius:8px; padding:.85rem 1.1rem; flex-wrap:wrap; }
+.f-snapshot-card:hover { border-color:var(--green); box-shadow:0 2px 8px rgba(28,86,49,.08); }
+.f-snapshot-name { font-weight:700; font-size:.95rem; color:var(--green-d); }
+.f-snapshot-meta { font-size:.8rem; color:var(--muted); margin-top:.2rem; }
+.f-snapshot-actions { display:flex; gap:.4rem; flex-shrink:0; }
+
+/* ─── Alert banners ─── */
+.f-alert { padding:.6rem 1rem; border-radius:6px; font-size:.85rem; font-weight:500; margin-bottom:.75rem; }
+.f-alert-success { background:#E8F5E9; color:#1C5631; border:1px solid #A5D6A7; }
+.f-alert-warn { background:#FFF8E1; color:#7B5800; border:1px solid #FFD54F; }
+
+/* ─── Empty state ─── */
+.f-empty-state { text-align:center; padding:3rem 1rem; color:var(--muted); }
+.f-empty-state a { color:var(--green); font-weight:600; }
+
+/* ─── Danger button ─── */
+.f-btn-danger { background:#fff; color:var(--red); border:1px solid var(--red); padding:.28rem .65rem; border-radius:5px; font-size:.78rem; cursor:pointer; }
+.f-btn-danger:hover { background:var(--red); color:#fff; }
+
+/* ─── Grid table (snapshot detail) ─── */
+.f-grid-table { border-collapse:collapse; width:100%; }
+.f-grid-table thead th { padding:.32rem .5rem; background:var(--green); color:#fff; font-size:.72rem; text-transform:uppercase; text-align:right; border:1px solid rgba(255,255,255,.15); }
+.f-grid-table thead th:first-child { text-align:left; }
+.f-grid-table td { padding:.28rem .5rem; border-bottom:1px solid #F0F2F5; }
+.f-grid-table tr:hover td { background:var(--grey); }
+
 /* ─── Misc ─── */
 @media (max-width: 1200px) { .f-summary-grid { grid-template-columns: repeat(3,1fr); } }
 @media (max-width: 900px) { .f-two-col { grid-template-columns: 1fr; } .f-kpi-row { grid-template-columns: 1fr 1fr; } }

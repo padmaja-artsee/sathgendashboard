@@ -310,6 +310,18 @@ def init_db() -> None:
                 fiscal_year INTEGER PRIMARY KEY,
                 archived_at TEXT
             );
+
+            -- Financial snapshots saved by the user
+            CREATE TABLE IF NOT EXISTS snapshots (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                name          TEXT    NOT NULL,
+                snapshot_date TEXT    NOT NULL,
+                fiscal_year   INTEGER NOT NULL,
+                notes         TEXT    DEFAULT '',
+                grid_json     TEXT    NOT NULL,
+                items_json    TEXT    NOT NULL,
+                created_at    TEXT    NOT NULL
+            );
         """)
         _seed_line_items(conn)
         _seed_accounts(conn)
@@ -696,3 +708,49 @@ def delete_payment_account(paid: int) -> None:
         conn.execute(
             "DELETE FROM payment_accounts WHERE id=? AND is_system=0", (paid,)
         )
+
+
+# ---------------------------------------------------------------------------
+# Snapshots
+# ---------------------------------------------------------------------------
+
+def save_snapshot(name: str, snapshot_date: str, fiscal_year: int,
+                  notes: str, grid_data: dict, items: list[dict]) -> int:
+    """grid_data keys are already strings (e.g. 'b_3_4' or 'a_3_4')."""
+    import json
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with get_db() as conn:
+        cur = conn.execute(
+            """INSERT INTO snapshots
+               (name, snapshot_date, fiscal_year, notes, grid_json, items_json, created_at)
+               VALUES (?,?,?,?,?,?,?)""",
+            (name, snapshot_date, fiscal_year, notes,
+             json.dumps(grid_data), json.dumps(items), now),
+        )
+        return cur.lastrowid
+
+
+def list_snapshots() -> list[dict]:
+    with get_db() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT id,name,snapshot_date,fiscal_year,notes,created_at "
+            "FROM snapshots ORDER BY snapshot_date DESC, created_at DESC"
+        ).fetchall()]
+
+
+def get_snapshot(snap_id: int) -> dict | None:
+    import json
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM snapshots WHERE id=?", (snap_id,)).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    d["grid"]  = json.loads(d["grid_json"])   # keys are strings like "a_3_4"
+    d["items"] = json.loads(d["items_json"])
+    return d
+
+
+def delete_snapshot(snap_id: int) -> None:
+    with get_db() as conn:
+        conn.execute("DELETE FROM snapshots WHERE id=?", (snap_id,))

@@ -740,3 +740,95 @@ def export_analysis_xlsx(summary: list, chart_months: list,
     fname = f"Sathgen-Analysis-FY{fiscal_year}.xlsx"
     buf = BytesIO(); wb.save(buf)
     return buf.getvalue(), fname
+
+
+def export_snapshot_xlsx(snap: dict, fy_months: list, month_labels: dict,
+                         section_labels: dict) -> tuple[bytes, str]:
+    """Export a saved snapshot as an Excel workbook."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    snap_name = snap["name"]
+    snap_date = snap["snapshot_date"]
+    fiscal_year = snap["fiscal_year"]
+    ws.title = f"Snapshot FY{str(fiscal_year)[-2:]}"
+
+    items = snap["items"]
+    grid  = snap["grid"]   # {(lid, m): value} — actual values from snapshot
+
+    ncols = 2 + len(fy_months) + 1  # label + months + total
+    month_col = {m: 3 + i for i, m in enumerate(fy_months)}
+    total_col  = ncols
+
+    # Title rows
+    ws.merge_cells(f"B1:{get_column_letter(ncols)}1")
+    c = ws["B1"]; c.value = "Sathgen Therapeutics"
+    c.font = _f(bold=True, size=12, color=_WHITE); c.fill = _fill(_GREEN)
+    c.alignment = _al(h="left"); ws.row_dimensions[1].height = 22
+
+    ws.merge_cells(f"B2:{get_column_letter(ncols)}2")
+    c = ws["B2"]
+    c.value = f"FINANCIALS AS OF {snap_date} — \"{snap_name}\" — FY{fiscal_year}"
+    c.font = _f(bold=True, size=10, color=_WHITE); c.fill = _fill(_GREEN)
+    c.alignment = _al(h="left"); ws.row_dimensions[2].height = 18
+
+    ws.merge_cells(f"B3:{get_column_letter(ncols)}3")
+    c = ws["B3"]
+    c.value = f"Actuals snapshot saved on {snap.get('created_at','')[:10]}"
+    c.font = _f(size=8, color="888888"); c.alignment = _al(h="left")
+
+    # Header row
+    hdr = 4
+    ws.cell(hdr, 2, "").fill = _fill(_GREEN)
+    for m in fy_months:
+        c = ws.cell(hdr, month_col[m], month_labels[m].upper())
+        c.font = _f(bold=True, size=8, color=_WHITE); c.fill = _fill(_GREEN)
+        c.alignment = _al(h="center"); c.border = _border()
+    c = ws.cell(hdr, total_col, "TOTAL")
+    c.font = _f(bold=True, size=8, color=_WHITE); c.fill = _fill(_GREEN_D)
+    c.alignment = _al(h="center"); c.border = _border()
+    ws.row_dimensions[hdr].height = 16
+
+    ws.column_dimensions["A"].width = 2
+    ws.column_dimensions["B"].width = 30
+    for col in range(3, ncols + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 12
+
+    data_row = hdr + 1
+    prev_sec = None
+    for item in items:
+        sec      = item["section"]
+        is_calc  = item["is_calculated"]
+        lid      = item["id"]
+
+        if sec != prev_sec:
+            _write_section_header(ws, data_row, section_labels.get(sec, sec).upper(), ncols)
+            data_row += 1; prev_sec = sec
+
+        row_fill = _fill(_GREEN_L) if is_calc else (_fill(_GREY) if data_row % 2 == 0 else _fill(_WHITE))
+        row_font = _f(bold=is_calc)
+
+        c = ws.cell(data_row, 2, item["name"])
+        c.font = row_font; c.fill = row_fill
+        c.alignment = _al(h="left"); c.border = _border()
+
+        row_total = 0
+        for m in fy_months:
+            val = grid.get(f"a_{lid}_{m}", 0) or 0
+            row_total += val
+            c = ws.cell(data_row, month_col[m], val if val else None)
+            c.fill = row_fill; c.font = row_font; c.border = _border()
+            if val: c.number_format = "#,##0"
+            c.alignment = _al(h="right")
+
+        c = ws.cell(data_row, total_col, row_total if row_total else None)
+        c.fill = _fill(_GREEN_L) if is_calc else _fill(_GREY)
+        c.font = _f(bold=True)
+        if row_total: c.number_format = "#,##0"
+        c.alignment = _al(h="right"); c.border = _border()
+        ws.row_dimensions[data_row].height = 14
+        data_row += 1
+
+    ws.freeze_panes = f"C{hdr+1}"
+    fname = f"Sathgen-Snapshot-{snap_date}-{snap_name[:30].replace(' ','-')}.xlsx"
+    buf = BytesIO(); wb.save(buf)
+    return buf.getvalue(), fname

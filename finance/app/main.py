@@ -25,6 +25,7 @@ from finance.app.database import (
     list_accounts, list_line_items, list_payment_accounts, list_vendors,
     save_account, save_actuals_manual, save_budget_grid,
     save_payment_account, save_vendor, unarchive_year,
+    save_snapshot, list_snapshots, get_snapshot, delete_snapshot,
 )
 from finance.app.expenses import (
     create_transaction, delete_transaction, get_transaction,
@@ -378,6 +379,7 @@ async def variances_page(request: Request, fy: int = Query(0)):
 
 @app.get("/analysis", response_class=HTMLResponse)
 async def analysis_page(request: Request, fy: int = Query(0)):
+    import json
     fys = get_fiscal_years()
     if not fy: fy = fys[0]
     items  = list_line_items()
@@ -401,18 +403,101 @@ async def analysis_page(request: Request, fy: int = Query(0)):
         summary.append({"label": label, "planned": planned, "actual": actual,
                          "variance": var, "var_pct": var_pct, "section": sec})
 
-    # Monthly chart data — Total Expenses and Income
-    by_name = {i["name"]: i["id"] for i in items}
-    chart_months  = [MONTH_LABELS[m] for m in FY_MONTHS]
-    exp_budget    = [b_grid.get((by_name.get("Total Expenses"), m), 0) for m in FY_MONTHS]
-    exp_actual    = [a_grid.get((by_name.get("Total Expenses"), m), 0) for m in FY_MONTHS]
-    income_actual = [a_grid.get((by_name.get("Total Income"),   m), 0) for m in FY_MONTHS]
+    # Per-line-item monthly data for client-side chart filtering
+    chart_months = [MONTH_LABELS[m] for m in FY_MONTHS]
+    line_data = {}
+    for i in items:
+        if i["is_calculated"]:
+            continue
+        line_data[i["id"]] = {
+            "name":    i["name"],
+            "section": i["section"],
+            "budget":  [b_grid.get((i["id"], m), 0) for m in FY_MONTHS],
+            "actual":  [a_grid.get((i["id"], m), 0) for m in FY_MONTHS],
+        }
+
+    # Section-level totals for pie/donut breakdown
+    section_totals = {}
+    for sec, label in SUMMARY_LINES:
+        sec_items = [i for i in items if i["section"] == sec and not i["is_calculated"]]
+        section_totals[sec] = {
+            "label":  label,
+            "budget": [sum(b_grid.get((i["id"], m), 0) for i in sec_items) for m in FY_MONTHS],
+            "actual": [sum(a_grid.get((i["id"], m), 0) for i in sec_items) for m in FY_MONTHS],
+        }
 
     return templates.TemplateResponse("analysis.html", _ctx(
         request, fy=fy, fiscal_years=fys,
         summary=summary, chart_months=chart_months,
-        exp_budget=exp_budget, exp_actual=exp_actual, income_actual=income_actual,
+        line_data_json=json.dumps(line_data),
+        section_totals_json=json.dumps(section_totals),
+        items=[{"id": i["id"], "name": i["name"], "section": i["section"]}
+               for i in items if not i["is_calculated"]],
     ))
+
+
+# ---------------------------------------------------------------------------
+# Snapshots
+# ---------------------------------------------------------------------------
+
+@app.get("/snapshots", response_class=HTMLResponse)
+async def snapshots_list(request: Request, saved: int = Query(0), deleted: int = Query(0)):
+    return templates.TemplateResponse("snapshots.html", _ctx(
+        request, snapshots=list_snapshots(), fiscal_years=get_fiscal_years(),
+        saved=saved, deleted=deleted, page="snapshots",
+    ))
+
+
+@app.post("/snapshots/save")
+async def snapshot_save(
+    name: str = Form(...),
+    snapshot_date: str = Form(...),
+    fy: int = Form(...),
+    notes: str = Form(""),
+):
+    items  = list_line_items()
+    ob     = get_opening_balance(fy)
+    a_raw  = _combined_actuals(fy, items)
+    a_grid = compute_grid(a_raw, items, ob)
+    b_grid = compute_grid(get_budget_grid(fy), items, ob)
+    # Store with prefixed string keys so budget and actual are both captured
+    combined = {}
+    for (lid, m), v in b_grid.items():
+        combined[f"b_{lid}_{m}"] = v
+    for (lid, m), v in a_grid.items():
+        combined[f"a_{lid}_{m}"] = v
+    items_plain = [{"id": i["id"], "name": i["name"], "section": i["section"],
+                    "is_calculated": i["is_calculated"]} for i in items]
+    save_snapshot(name, snapshot_date, fy, notes, combined, items_plain)
+    return RedirectResponse(f"{FINANCE_BASE}/snapshots?saved=1", status_code=303)
+
+
+@app.get("/snapshots/{snap_id}", response_class=HTMLResponse)
+async def snapshot_detail(request: Request, snap_id: int):
+    snap = get_snapshot(snap_id)
+    if not snap:
+        return RedirectResponse(f"{FINANCE_BASE}/snapshots", status_code=303)
+    return templates.TemplateResponse("snapshot_detail.html", _ctx(
+        request, snap=snap, chart_months=[MONTH_LABELS[m] for m in FY_MONTHS],
+        fy_months=FY_MONTHS, month_labels=MONTH_LABELS,
+        section_labels=SECTION_LABELS, page="snapshots",
+    ))
+
+
+@app.post("/snapshots/{snap_id}/delete")
+async def snapshot_delete(snap_id: int):
+    delete_snapshot(snap_id)
+    return RedirectResponse(f"{FINANCE_BASE}/snapshots?deleted=1", status_code=303)
+
+
+@app.get("/export/snapshot/{snap_id}.xlsx")
+async def export_snapshot_route(snap_id: int):
+    from finance.app.exports import export_snapshot_xlsx
+    snap = get_snapshot(snap_id)
+    if not snap:
+        return RedirectResponse(f"{FINANCE_BASE}/snapshots", status_code=303)
+    content, fname = export_snapshot_xlsx(snap, FY_MONTHS, MONTH_LABELS, SECTION_LABELS)
+    return _excel_response(content, fname)
 
 
 # ---------------------------------------------------------------------------
