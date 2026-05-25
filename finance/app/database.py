@@ -528,7 +528,6 @@ def compute_grid(raw: dict, items: list[dict], opening_balance: float = 0.0) -> 
             if i["section"] == section and not i["is_calculated"]
         )
 
-    running_balance = opening_balance
     for month in FY_MONTHS:
         ti  = sec_sum("income",   month)
         tec = sec_sum("employee", month)
@@ -536,8 +535,7 @@ def compute_grid(raw: dict, items: list[dict], opening_balance: float = 0.0) -> 
         tad = sec_sum("admin",    month)
         ttr = sec_sum("travel",   month)
         tex = tec + toc + tad + ttr
-        # Cumulative running balance: prior balance + this month's net
-        running_balance = running_balance + ti - tex
+        net = ti - tex  # monthly net only — opening balance shown separately
 
         for name, val in [
             ("Total Income",            ti),
@@ -546,7 +544,7 @@ def compute_grid(raw: dict, items: list[dict], opening_balance: float = 0.0) -> 
             ("Total Admin",             tad),
             ("Total Travel",            ttr),
             ("Total Expenses",          tex),
-            ("Net (Income - Expenses)", running_balance),
+            ("Net (Income - Expenses)", net),
         ]:
             if name in by_name:
                 result[(by_name[name], month)] = val

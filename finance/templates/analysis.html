@@ -220,18 +220,19 @@ function buildDatasets(cat, item) {
     const inc = sumMonthly(["income"], "all");
     const exp = sumMonthly(EXPENSE_SECTIONS, "all");
     return [
-      { label:"Income Budget",   data:inc.budget, backgroundColor:"rgba(28,86,49,.2)",  borderColor:"#1C5631", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
-      { label:"Income Actual",   data:inc.actual, backgroundColor:"rgba(28,86,49,.6)",  borderColor:"#134023", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
-      { label:"Expense Budget",  data:exp.budget, backgroundColor:"rgba(192,57,43,.2)", borderColor:"#C0392B", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
-      { label:"Expense Actual",  data:exp.actual, backgroundColor:"rgba(192,57,43,.6)", borderColor:"#96281B", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+      { label:"Income Budget",   data:inc.budget, backgroundColor:"rgba(39,174,96,.4)",   borderColor:"#27AE60", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+      { label:"Income Actual",   data:inc.actual, backgroundColor:"rgba(39,174,96,.95)",  borderColor:"#1E8449", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+      { label:"Expense Budget",  data:exp.budget, backgroundColor:"rgba(231,76,60,.35)",  borderColor:"#E74C3C", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+      { label:"Expense Actual",  data:exp.actual, backgroundColor:"rgba(231,76,60,.95)",  borderColor:"#C0392B", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
     ];
   }
 
   const sections = cat === "expenses" ? EXPENSE_SECTIONS : [cat];
   const { budget, actual } = sumMonthly(sections, item);
+  const isIncome = cat === "income";
   return [
-    { label:"Budget",  data:budget, backgroundColor:"rgba(28,86,49,.25)",  borderColor:"#1C5631", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
-    { label:"Actuals", data:actual, backgroundColor:"rgba(192,57,43,.35)", borderColor:"#C0392B", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+    { label:"Budget",  data:budget, backgroundColor: isIncome ? "rgba(39,174,96,.4)"  : "rgba(52,152,219,.5)",  borderColor: isIncome ? "#27AE60" : "#2980B9", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
+    { label:"Actuals", data:actual, backgroundColor: isIncome ? "rgba(39,174,96,.95)" : "rgba(231,76,60,.95)", borderColor: isIncome ? "#1E8449" : "#C0392B", borderWidth:2, ...(ctype==="line"?lineOpts:{}) },
   ];
 }
 
@@ -267,16 +268,17 @@ function renderCharts() {
         datasets: [{
           label: "Cumulative Balance",
           data: net,
-          borderColor: "#1C5631", backgroundColor: "rgba(28,86,49,.12)",
+          borderColor: "#1E8449", backgroundColor: "rgba(39,174,96,.15)",
           borderWidth: 2.5, fill: chartType === "line", tension: .4,
-          pointBackgroundColor: net.map(v => v >= 0 ? "#1C5631" : "#C0392B"),
+          pointBackgroundColor: net.map(v => v >= 0 ? "#27AE60" : "#E74C3C"),
           pointRadius: 4,
         }]
       },
       options: {
         responsive: true,
         plugins: { legend: { position: "bottom" } },
-        scales: { y: { ticks: { callback: v => "$" + v.toLocaleString() } } }
+        scales: { y: { ticks: { callback: v => "$" + v.toLocaleString() } } },
+        datasets: { bar: { barPercentage: 0.95, categoryPercentage: 0.9 } }
       }
     });
     if (netChartObj) { netChartObj.destroy(); netChartObj = null; }
@@ -295,7 +297,8 @@ function renderCharts() {
     options: {
       responsive: true,
       plugins: { legend: { position: "bottom" } },
-      scales: { y: { beginAtZero: true, ticks: { callback: v => "$" + v.toLocaleString() } } }
+      scales: { y: { beginAtZero: true, ticks: { callback: v => "$" + v.toLocaleString() } } },
+      datasets: { bar: { barPercentage: 0.95, categoryPercentage: 0.9 } }
     }
   });
 
@@ -307,9 +310,9 @@ function renderCharts() {
       datasets: [{
         label: "Cumulative Net",
         data: net,
-        borderColor: "#1C5631", backgroundColor: "rgba(28,86,49,.1)",
-        borderWidth: 2, fill: true, tension: .4,
-        pointBackgroundColor: net.map(v => v >= 0 ? "#1C5631" : "#C0392B"),
+        borderColor: "#1E8449", backgroundColor: "rgba(39,174,96,.12)",
+        borderWidth: 2.5, fill: true, tension: .4,
+        pointBackgroundColor: net.map(v => v >= 0 ? "#27AE60" : "#E74C3C"),
       }]
     },
     options: {

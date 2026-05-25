@@ -24,7 +24,7 @@
 <div class="f-card" style="margin-bottom:1rem;padding:.6rem 1rem;display:flex;align-items:center;gap:.75rem;">
   <span style="font-weight:600;font-size:.9rem;">Opening Balance (Apr {{ fy-1 }})</span>
   <span style="font-size:1rem;color:#1e6f3e;font-weight:700;">${{ "{:,.2f}".format(opening_balance) }}</span>
-  <span class="f-text-muted" style="font-size:.8rem;">Included in Apr Net</span>
+  <span class="f-text-muted" style="font-size:.8rem;">Starting cash balance — shown separately from monthly Net row</span>
   <a href="{{ _base }}/budget?fy={{ fy }}" class="f-btn-sm f-btn-outline" style="margin-left:auto;">Edit →</a>
 </div>
 {% endif %}

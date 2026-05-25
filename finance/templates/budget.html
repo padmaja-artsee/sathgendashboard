@@ -182,7 +182,6 @@ function secItems(sec) { return items.filter(i=>i.section===sec && !i.is_calcula
 function fmt(v) { return v===0?'—':'$'+Math.round(v).toLocaleString(); }
 
 function recalc() {
-  let runningBalance = OPENING_BALANCE;
   months.forEach(m => {
     let ti=0,tec=0,toc=0,tad=0,ttr=0;
     secItems('income').forEach(i=>ti+=getVal(i.id,m));
@@ -191,9 +190,9 @@ function recalc() {
     secItems('admin').forEach(i=>tad+=getVal(i.id,m));
     secItems('travel').forEach(i=>ttr+=getVal(i.id,m));
     const tex=tec+toc+tad+ttr;
-    runningBalance = runningBalance + ti - tex;
+    const net=ti-tex;  // monthly net — opening balance shown separately above
     const map={'Total Income':ti,'Total Employee Costs':tec,'Total Office Costs':toc,
-               'Total Admin':tad,'Total Travel':ttr,'Total Expenses':tex,'Net (Income - Expenses)':runningBalance};
+               'Total Admin':tad,'Total Travel':ttr,'Total Expenses':tex,'Net (Income - Expenses)':net};
     Object.entries(map).forEach(([name,val])=>{
       const lid=nameToLid[name];
       if(!lid) return;
