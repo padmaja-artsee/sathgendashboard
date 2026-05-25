@@ -35,7 +35,6 @@ from app.database import (
     deals_for_activity_edit,
     iso_date_input,
     list_deals_for_company,
-    list_products,
     log_update,
     archive_deal,
     bulk_deal_action,
@@ -52,7 +51,6 @@ from app.database import (
     recent_activities,
     search_leads_contacts,
     summary_by_customer,
-    summary_by_product,
     update_lead,
     update_company_profile,
     create_contact,
@@ -60,7 +58,7 @@ from app.database import (
     delete_contact,
 )
 from app.exports import (
-    SHIPPING_COLUMNS,
+    LEADS_COLUMNS,
     export_filename,
     rollup_columns,
     rollup_sheet_name,
@@ -72,77 +70,6 @@ from app.deal_files import (
     delete_deal_file,
     get_deal_file,
     list_deal_files,
-)
-from app.products import (
-    add_product_file,
-    delete_product,
-    delete_product_file,
-    fix_legacy_product_names,
-    get_product,
-    get_product_file,
-    import_catalogue,
-    list_products_full,
-    save_product,
-    update_deal_product,
-)
-from app.generate import GENERATE_DOCUMENTS
-from app.po_exports import export_po_pdf, export_po_xlsx
-# ── Commission Invoice (self-contained; remove this block to drop the feature) ──
-from app.commission_invoices import (
-    DEFAULT_CI,
-    create_ci_from_deal,
-    create_ci_from_deals,
-    create_commission_invoice,
-    delete_commission_invoice,
-    duplicate_commission_invoice,
-    get_commission_invoice,
-    get_commission_invoice_for_export,
-    list_commission_invoices,
-    parse_ci_form,
-    upgrade_commission_invoices_schema,
-)
-from app.ci_exports import export_ci_xlsx
-# ── Sales (Commercial) Invoice ──────────────────────────────────────────────
-from app.sales_invoices import (
-    DEFAULT_SI,
-    create_sales_invoice,
-    create_si_from_deals,
-    delete_sales_invoice,
-    duplicate_sales_invoice,
-    get_sales_invoice,
-    get_sales_invoice_for_export,
-    list_sales_invoices,
-    parse_si_form,
-    upgrade_sales_invoices_schema,
-)
-from app.si_exports import export_si_xlsx
-# ── Delivery Note ────────────────────────────────────────────────────────────
-from app.delivery_notes import (
-    DEFAULT_DN,
-    create_delivery_note,
-    create_dn_from_deal,
-    delete_delivery_note,
-    duplicate_delivery_note,
-    get_delivery_note,
-    list_delivery_notes,
-    parse_dn_form,
-    upgrade_delivery_notes_schema,
-)
-from app.dn_exports import export_dn_xlsx
-from app.purchase_orders import (
-    DEFAULT_PO,
-    calculate_po_totals,
-    create_purchase_order,
-    create_purchase_order_from_deal,
-    delete_purchase_order,
-    duplicate_purchase_order,
-    get_purchase_order,
-    get_purchase_order_for_export,
-    list_purchase_orders,
-    parse_po_form,
-    update_purchase_order,
-    validate_purchase_order,
-    validation_warnings,
 )
 from app.seed import load_seed
 
@@ -350,169 +277,9 @@ async def dashboard(request: Request, period: str = Query("all")):
             period=period,
             stats=dashboard_stats(period),
             recent=recent_activities(20, period),
-            by_product=summary_by_product(period)[:8],
             open_deals=list_deals(status="open", period="all")[:5],
         ),
     )
-
-
-@app.get("/products", response_class=HTMLResponse)
-async def products_page(
-    request: Request,
-    q: str = Query(""),
-    category: str = Query(""),
-    status: str = Query(""),
-):
-    products = list_products_full(q, category, status)
-    categories = sorted({p.get("category") or "" for p in products if p.get("category")})
-    return templates.TemplateResponse(
-        "products.html",
-        ctx(
-            request,
-            page="products",
-            products=products,
-            q=q,
-            category=category,
-            status=status,
-            categories=categories,
-        ),
-    )
-
-
-PRODUCTS_COLUMNS: list[tuple[str, str]] = [
-    ("Product", "name"),
-    ("Trade Name", "trade_name"),
-    ("CAS Number", "cas_number"),
-    ("Category", "category"),
-    ("Status", "status"),
-    ("Biobased Content", "biobased_content"),
-    ("Certifications", "certifications"),
-    ("Applications", "applications"),
-    ("Synonyms", "synonyms"),
-]
-
-
-@app.get("/products/export.xlsx")
-async def products_export_xlsx(
-    q: str = Query(""),
-    category: str = Query(""),
-    status: str = Query(""),
-):
-    rows = list_products_full(q, category, status)
-    fname = export_filename("gbinc-products", status, "xlsx")
-    return _download_response(
-        to_xlsx_bytes([("Products", rows, PRODUCTS_COLUMNS)]),
-        fname,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-
-@app.get("/products/new", response_class=HTMLResponse)
-async def product_new(request: Request):
-    return templates.TemplateResponse(
-        "product_edit.html",
-        ctx(request, page="products", product=None),
-    )
-
-
-@app.get("/products/{product_id}", response_class=HTMLResponse)
-async def product_edit_page(
-    request: Request,
-    product_id: int,
-    error: str = Query(""),
-):
-    product = get_product(product_id)
-    if not product:
-        return RedirectResponse("/products", status_code=303)
-    err_msg = ""
-    if error == "pdf_only":
-        err_msg = "Only PDF files can be attached."
-    elif error == "invalid_file":
-        err_msg = "Could not save that file."
-    elif error == "delete_failed":
-        err_msg = "This product could not be deleted (it may be protected)."
-    return templates.TemplateResponse(
-        "product_edit.html",
-        ctx(request, page="products", product=product, error_msg=err_msg),
-    )
-
-
-@app.post("/products/{product_id}/delete")
-async def product_delete(product_id: int):
-    result = delete_product(product_id)
-    if not result.get("ok"):
-        return RedirectResponse(f"/products/{product_id}?error=delete_failed", status_code=303)
-    return RedirectResponse("/products", status_code=303)
-
-
-@app.post("/products/{product_id}/upload")
-async def product_upload_pdf(
-    product_id: int,
-    pdf_file: UploadFile = File(...),
-):
-    if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
-        return RedirectResponse(f"/products/{product_id}?error=pdf_only", status_code=303)
-    content = await pdf_file.read()
-    try:
-        add_product_file(product_id, pdf_file.filename, content)
-    except ValueError:
-        return RedirectResponse(f"/products/{product_id}?error=invalid_file", status_code=303)
-    return RedirectResponse(f"/products/{product_id}", status_code=303)
-
-
-@app.get("/products/files/{file_id}")
-async def product_download_pdf(file_id: int):
-    info = get_product_file(file_id)
-    if not info:
-        return RedirectResponse("/products", status_code=303)
-    return FileResponse(
-        info["absolute_path"],
-        media_type="application/pdf",
-        filename=info["filename"],
-    )
-
-
-@app.post("/products/files/{file_id}/delete")
-async def product_delete_pdf(file_id: int):
-    product_id = delete_product_file(file_id)
-    if product_id:
-        return RedirectResponse(f"/products/{product_id}", status_code=303)
-    return RedirectResponse("/products", status_code=303)
-
-
-@app.post("/products/save")
-async def product_save(
-    name: str = Form(...),
-    trade_name: str = Form(""),
-    cas_number: str = Form(""),
-    hs_code: str = Form(""),
-    biobased_content: str = Form(""),
-    applications: str = Form(""),
-    certifications: str = Form(""),
-    category: str = Form(""),
-    synonyms: str = Form(""),
-    notes: str = Form(""),
-    status: str = Form("active"),
-    product_id: str = Form(""),
-):
-    pid = int(product_id) if product_id else None
-    save_product(
-        {
-            "name": name,
-            "trade_name": trade_name,
-            "cas_number": cas_number,
-            "hs_code": hs_code,
-            "biobased_content": biobased_content,
-            "applications": applications,
-            "certifications": certifications,
-            "category": category,
-            "synonyms": synonyms,
-            "notes": notes,
-            "status": status,
-        },
-        pid,
-    )
-    return RedirectResponse("/products", status_code=303)
 
 
 @app.post("/deals/{deal_id}/product")
@@ -600,21 +367,19 @@ async def shipping_summary_page(
     )
 
 
-@app.get("/leads", response_class=HTMLResponse)
-async def leads_contacts(
+@app.get("/contacts", response_class=HTMLResponse)
+async def contacts_page(
     request: Request,
     company: str = Query(""),
-    product: str = Query(""),
     q: str = Query(""),
 ):
     return templates.TemplateResponse(
-        "leads.html",
+        "contacts.html",
         ctx(
             request,
-            page="leads",
-            leads=search_leads_contacts(company, product, q),
+            page="contacts",
+            contacts=search_leads_contacts(company, "", q),
             company=company,
-            product=product,
             q=q,
         ),
     )
@@ -675,7 +440,6 @@ async def add_page(
             page="add",
             tab=tab,
             customers=list_customers(),
-            products=list_products(),
             preset_company=company,
             preset_product=product,
             preset_deal_id=deal_id,
@@ -713,7 +477,6 @@ async def deal_page(
             product_record=product_record,
             deal_files=list_deal_files(deal_id),
             deal_file_error=err_msg,
-            all_products=list_products(),
             company_deals=deals_for_activity_edit(
                 company,
                 {deal_id, *(a.get("deal_id") for a in detail.get("activities", []))},
@@ -771,7 +534,6 @@ async def post_contact(
     email: str = Form(""),
     website: str = Form(""),
     phone: str = Form(""),
-    products_interested: str = Form(""),
     notes: str = Form(""),
 ):
     create_lead(
@@ -781,11 +543,10 @@ async def post_contact(
             "email": email,
             "website": website,
             "phone": phone,
-            "products_interested": products_interested,
             "notes": notes,
         }
     )
-    return RedirectResponse(f"/leads?company={quote(company)}", status_code=303)
+    return RedirectResponse(f"/contacts?company={quote(company)}", status_code=303)
 
 
 @app.post("/add/deal")
@@ -1042,7 +803,7 @@ async def edit_activity_route(
             },
         )
     except ValueError as e:
-        base = next_url if next_url.startswith("/") else "/leads"
+        base = next_url if next_url.startswith("/") else "/contacts"
         sep = "&" if "?" in base else "?"
         code = "pick_deal" if "Pick a deal" in str(e) else quote(str(e))
         return RedirectResponse(f"{base}{sep}error={code}", status_code=303)
@@ -1050,7 +811,7 @@ async def edit_activity_route(
         return RedirectResponse(next_url, status_code=303)
     if company:
         return RedirectResponse(f"/customer?name={quote(company)}", status_code=303)
-    return RedirectResponse("/leads", status_code=303)
+    return RedirectResponse("/contacts", status_code=303)
 
 
 @app.post("/activities/{activity_id}/attach")
@@ -1073,7 +834,7 @@ async def delete_activity_route(
         return RedirectResponse(next_url, status_code=303)
     if company:
         return RedirectResponse(f"/customer?name={quote(company)}", status_code=303)
-    return RedirectResponse("/leads", status_code=303)
+    return RedirectResponse("/contacts", status_code=303)
 
 
 @app.get("/customer", response_class=HTMLResponse)
@@ -1085,7 +846,7 @@ async def customer_page(
 ):
     detail = customer_detail(name, product)
     if not detail:
-        return RedirectResponse("/leads", status_code=303)
+        return RedirectResponse("/contacts", status_code=303)
     err_msg = ""
     if error == "pick_deal":
         err_msg = "Pick a deal to attach this entry to, or switch to Company only."
@@ -1095,14 +856,13 @@ async def customer_page(
         "customer.html",
         ctx(
             request,
-            page="leads",
+            page="contacts",
             detail=detail,
             product_filter=product,
             company_deals=deals_for_activity_edit(
                 name, _timeline_deal_ids(detail["timeline"])
             ),
             activity_error=err_msg,
-            all_products=list_products(),
         ),
     )
 
@@ -1111,15 +871,14 @@ async def customer_page(
 async def delete_customer_route(customer_id: int):
     name = delete_customer(customer_id)
     if not name:
-        return RedirectResponse("/leads?error=company_not_found", status_code=303)
-    return RedirectResponse("/leads", status_code=303)
+        return RedirectResponse("/contacts?error=company_not_found", status_code=303)
+    return RedirectResponse("/contacts", status_code=303)
 
 
 @app.post("/customer/{customer_id}/profile")
 async def edit_company_profile_route(
     customer_id: int,
     website: str = Form(""),
-    products_interested: str = Form(""),
     notes: str = Form(""),
     company: str = Form(""),
 ):
@@ -1127,7 +886,6 @@ async def edit_company_profile_route(
         customer_id,
         {
             "website": website,
-            "products_interested": products_interested,
             "notes": notes,
         },
     )
@@ -1208,11 +966,7 @@ async def summary_export_csv(
         cols = SHIPPING_COLUMNS
         fname = export_filename("gbinc-shipping-summary", period, "csv")
     else:
-        rows = (
-            summary_by_product(period)
-            if group == "product"
-            else summary_by_customer(period)
-        )
+        rows = summary_by_customer(period)
         cols = rollup_columns(group)
         fname = export_filename("gbinc-summary", period, "csv", group)
     return _download_response(
@@ -1228,11 +982,7 @@ async def summary_export_xlsx(
     group: str = Query("product"),
     sheet: str = Query("all"),
 ):
-    rollup_rows = (
-        summary_by_product(period)
-        if group == "product"
-        else summary_by_customer(period)
-    )
+    rollup_rows = summary_by_customer(period)
     shipping_rows = list_shipping_summary(status="open")
     if sheet == "rollup":
         sheets = [(rollup_sheet_name(group), rollup_rows, rollup_columns(group))]
@@ -1285,16 +1035,6 @@ async def shipping_export_xlsx(
     )
 
 
-LEADS_COLUMNS: list[tuple[str, str]] = [
-    ("Company", "company"),
-    ("Contact", "contact"),
-    ("Email", "email"),
-    ("Phone", "phone"),
-    ("Website", "website"),
-    ("Products Interested", "products_interested"),
-    ("Notes", "notes"),
-    ("Last Updated", "updated_at"),
-]
 
 DEALS_COLUMNS: list[tuple[str, str]] = [
     ("Deal Date", "deal_date"),
@@ -1312,16 +1052,15 @@ DEALS_COLUMNS: list[tuple[str, str]] = [
 ]
 
 
-@app.get("/leads/export.xlsx")
-async def leads_export_xlsx(
+@app.get("/contacts/export.xlsx")
+async def contacts_export_xlsx(
     company: str = Query(""),
-    product: str = Query(""),
     q: str = Query(""),
 ):
-    rows = search_leads_contacts(company, product, q)
-    fname = export_filename("gbinc-leads", "", "xlsx")
+    rows = search_leads_contacts(company, "", q)
+    fname = export_filename("sathgen-contacts", "", "xlsx")
     return _download_response(
-        to_xlsx_bytes([("Leads", rows, LEADS_COLUMNS)]),
+        to_xlsx_bytes([("Contacts", rows, LEADS_COLUMNS)]),
         fname,
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
@@ -1350,7 +1089,7 @@ async def summary(
     period: str = Query("month"),
     group: str = Query("product"),
 ):
-    rows = summary_by_product(period) if group == "product" else summary_by_customer(period)
+    rows = summary_by_customer(period)
     shipping_rows = list_shipping_summary(status="open")[:40]
     return templates.TemplateResponse(
         "summary.html",
@@ -1366,647 +1105,3 @@ async def summary(
     )
 
 
-# --- Generate module ---
-
-
-@app.get("/generate", response_class=HTMLResponse)
-async def generate_index(request: Request):
-    return templates.TemplateResponse(
-        "generate/index.html",
-        ctx(request, page="generate", documents=GENERATE_DOCUMENTS),
-    )
-
-
-@app.get("/generate/charts", response_class=HTMLResponse)
-async def charts_page(request: Request, period: str = "12m"):
-    import json
-    from app.charts import all_chart_data
-    data = all_chart_data(period)
-    return templates.TemplateResponse(
-        "generate/charts.html",
-        ctx(request, page="generate", period=period,
-            chart_data_json=json.dumps(data)),
-    )
-
-
-@app.get("/generate/purchase-orders", response_class=HTMLResponse)
-async def po_list_page(request: Request):
-    return templates.TemplateResponse(
-        "generate/purchase_orders/po_list.html",
-        ctx(request, page="generate", rows=list_purchase_orders()),
-    )
-
-
-@app.get("/api/po-companies")
-async def api_po_companies(q: str = Query("")):
-    """Companies that have at least one deal, filtered by q."""
-    from app.database import get_db
-    q = q.strip()
-    with get_db() as conn:
-        if q:
-            rows = conn.execute(
-                """SELECT DISTINCT c.name FROM deals d
-                   JOIN customers c ON c.id = d.customer_id
-                   WHERE d.deleted_at IS NULL AND d.archived = 0
-                     AND c.name LIKE ? COLLATE NOCASE
-                   ORDER BY c.name LIMIT 50""",
-                (f"%{q}%",),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """SELECT DISTINCT c.name FROM deals d
-                   JOIN customers c ON c.id = d.customer_id
-                   WHERE d.deleted_at IS NULL AND d.archived = 0
-                   ORDER BY c.name LIMIT 50""",
-            ).fetchall()
-    return {"companies": [r[0] for r in rows]}
-
-
-@app.get("/api/po-deals")
-async def api_po_deals(company: str = Query("")):
-    """All deals for a given company."""
-    company = company.strip()
-    if not company:
-        return {"deals": []}
-    deals = list_deals_for_company(company, active_only=False)
-    return {"deals": [
-        {
-            "id": d["id"],
-            "label": f"{(d.get('po_number') or '—')}  ·  {d.get('product') or '—'}  ·  {d.get('quantity','') or ''} {d.get('quantity_unit','') or ''}  [{d.get('status','—')}]",
-            "product": d.get("product") or "",
-            "po_number": d.get("po_number") or "",
-            "quantity": f"{d.get('quantity','')} {d.get('quantity_unit','')}".strip(),
-            "date": (d.get("deal_date") or d.get("po_date") or "")[:10],
-            "status": d.get("status") or "",
-        }
-        for d in deals
-    ]}
-
-
-@app.get("/generate/purchase-orders/new", response_class=HTMLResponse)
-async def po_new_page(
-    request: Request,
-    deal_id: int = Query(0),
-    pick: int = Query(0),
-    q: str = Query(""),
-):
-    if pick or (not deal_id and request.query_params.get("blank") != "1"):
-        return templates.TemplateResponse(
-            "generate/purchase_orders/po_pick_deal.html",
-            {"request": request},
-        )
-    if deal_id:
-        po = create_purchase_order_from_deal(deal_id)
-        if not po:
-            return RedirectResponse("/generate/purchase-orders/new", status_code=303)
-    else:
-        po = dict(DEFAULT_PO)
-        calc = calculate_po_totals(po["line_items"])
-        po["line_items"] = calc["line_items"]
-        po["total_value"] = calc["total_value"]
-    return templates.TemplateResponse(
-        "generate/purchase_orders/po_editor.html",
-        ctx(request, page="generate", po=po, editing=False, errors=[], warnings=[]),
-    )
-
-
-@app.post("/generate/purchase-orders/new")
-async def po_new_save(request: Request):
-    form = await request.form()
-    data, line_items = parse_po_form(form)
-    errors = validate_purchase_order(data, line_items)
-    warnings = validation_warnings(data, line_items)
-    if errors:
-        po = {**data, "line_items": line_items, "total_value": calculate_po_totals(line_items)["total_value"]}
-        return templates.TemplateResponse(
-            "generate/purchase_orders/po_editor.html",
-            ctx(request, page="generate", po=po, editing=False, errors=errors, warnings=warnings),
-            status_code=400,
-        )
-    deal_id = int(form.get("deal_id") or 0) or None
-    customer_id = int(form.get("customer_id") or 0) or None
-    po_id = create_purchase_order(
-        data, line_items,
-        source_type="deal" if deal_id else None,
-        source_id=deal_id,
-        deal_id=deal_id,
-        customer_id=customer_id,
-    )
-    q = "saved=1"
-    if warnings:
-        q += "&warn=" + quote(warnings[0][:120])
-    return RedirectResponse(f"/generate/purchase-orders/{po_id}?{q}", status_code=303)
-
-
-@app.get("/generate/purchase-orders/{po_id}", response_class=HTMLResponse)
-async def po_detail_page(request: Request, po_id: int, saved: str = Query(""), warn: str = Query("")):
-    po = get_purchase_order(po_id)
-    if not po:
-        return RedirectResponse("/generate/purchase-orders", status_code=303)
-    return templates.TemplateResponse(
-        "generate/purchase_orders/po_detail.html",
-        ctx(
-            request, page="generate", po=po,
-            warnings=validation_warnings(po, po.get("line_items") or []),
-            saved_msg="Saved." if saved else "",
-            warn_msg=warn,
-        ),
-    )
-
-
-@app.get("/generate/purchase-orders/{po_id}/edit", response_class=HTMLResponse)
-async def po_edit_page(request: Request, po_id: int):
-    po = get_purchase_order(po_id)
-    if not po:
-        return RedirectResponse("/generate/purchase-orders", status_code=303)
-    return templates.TemplateResponse(
-        "generate/purchase_orders/po_editor.html",
-        ctx(
-            request, page="generate", po=po, editing=True,
-            errors=[], warnings=validation_warnings(po, po.get("line_items") or []),
-        ),
-    )
-
-
-@app.post("/generate/purchase-orders/{po_id}/edit")
-async def po_edit_save(request: Request, po_id: int):
-    form = await request.form()
-    data, line_items = parse_po_form(form)
-    errors = validate_purchase_order(data, line_items)
-    warnings = validation_warnings(data, line_items)
-    if errors:
-        po = {**data, "id": po_id, "line_items": line_items}
-        po["total_value"] = calculate_po_totals(line_items)["total_value"]
-        return templates.TemplateResponse(
-            "generate/purchase_orders/po_editor.html",
-            ctx(request, page="generate", po=po, editing=True, errors=errors, warnings=warnings),
-            status_code=400,
-        )
-    update_purchase_order(po_id, data, line_items)
-    q = "saved=1"
-    if warnings:
-        q += "&warn=" + quote(warnings[0][:120])
-    return RedirectResponse(f"/generate/purchase-orders/{po_id}?{q}", status_code=303)
-
-
-@app.post("/generate/purchase-orders/{po_id}/delete")
-async def po_delete_route(po_id: int):
-    delete_purchase_order(po_id)
-    return RedirectResponse("/generate/purchase-orders", status_code=303)
-
-
-@app.post("/generate/purchase-orders/{po_id}/duplicate")
-async def po_duplicate_route(po_id: int):
-    new_id = duplicate_purchase_order(po_id)
-    if not new_id:
-        return RedirectResponse("/generate/purchase-orders", status_code=303)
-    return RedirectResponse(f"/generate/purchase-orders/{new_id}/edit", status_code=303)
-
-
-@app.get("/generate/purchase-orders/{po_id}/print", response_class=HTMLResponse)
-async def po_print_page(request: Request, po_id: int):
-    po = get_purchase_order_for_export(po_id)
-    if not po:
-        return RedirectResponse("/generate/purchase-orders", status_code=303)
-    return templates.TemplateResponse(
-        "generate/purchase_orders/po_print.html",
-        ctx(request, page="generate", po=po, hide_nav=True),
-    )
-
-
-@app.get("/generate/purchase-orders/{po_id}/export.xlsx")
-async def po_export_xlsx_route(po_id: int):
-    po = get_purchase_order_for_export(po_id)
-    if not po:
-        return RedirectResponse("/generate/purchase-orders", status_code=303)
-    content, fname = export_po_xlsx(po)
-    return _download_response(
-        content, fname,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-
-@app.get("/generate/purchase-orders/{po_id}/export.pdf")
-async def po_export_pdf_route(request: Request, po_id: int):
-    po = get_purchase_order_for_export(po_id)
-    if not po:
-        return RedirectResponse("/generate/purchase-orders", status_code=303)
-    html = templates.get_template("generate/purchase_orders/po_pdf.html").render(
-        request=request, po=po, generated_at=datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
-    )
-    result = export_po_pdf(po, html)
-    if not result:
-        return RedirectResponse(
-            f"/generate/purchase-orders/{po_id}/print?pdf_fallback=1", status_code=303
-        )
-    content, fname = result
-    return Response(
-        content=content,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
-    )
-
-
-# ════════════════════════════════════════════════════════════════════════════
-# ── Commission Invoice routes ────────────────────────────────────────────────
-# Remove this entire block (and the imports above) to drop the CI feature.
-# ════════════════════════════════════════════════════════════════════════════
-
-@app.get("/generate/commission-invoices", response_class=HTMLResponse)
-async def ci_list_page(request: Request):
-    rows = list_commission_invoices()
-    return templates.TemplateResponse(
-        "generate/commission_invoices/ci_list.html",
-        {"request": request, "rows": rows},
-    )
-
-
-@app.get("/generate/commission-invoices/new", response_class=HTMLResponse)
-async def ci_new_page(
-    request: Request,
-    deal_id: int = Query(0),
-    deal_ids: str = Query(""),   # comma-separated list, e.g. "3,7,12"
-    blank: str = Query(""),
-):
-    if not deal_id and not deal_ids and blank != "1":
-        return templates.TemplateResponse(
-            "generate/commission_invoices/ci_pick_deal.html",
-            {"request": request},
-        )
-    from copy import deepcopy
-    ids: list[int] = []
-    if deal_ids:
-        ids = [int(x) for x in deal_ids.split(",") if x.strip().isdigit()]
-    elif deal_id:
-        ids = [deal_id]
-    if ids:
-        ci = create_ci_from_deals(ids) or deepcopy(DEFAULT_CI)
-    else:
-        ci = deepcopy(DEFAULT_CI)
-    return templates.TemplateResponse(
-        "generate/commission_invoices/ci_editor.html",
-        {"request": request, "ci": ci, "editing": False, "errors": []},
-    )
-
-
-@app.post("/generate/commission-invoices/new", response_class=HTMLResponse)
-async def ci_new_post(request: Request):
-    form = await request.form()
-    data, line_items = parse_ci_form(form)
-    if not data.get("invoice_number"):
-        return templates.TemplateResponse(
-            "generate/commission_invoices/ci_editor.html",
-            {"request": request, "ci": {**data, "line_items": line_items},
-             "editing": False, "errors": ["Invoice number is required."]},
-            status_code=422,
-        )
-    deal_id    = int(form.get("deal_id") or 0) or None
-    customer_id = int(form.get("customer_id") or 0) or None
-    ci_id = create_commission_invoice(data, line_items, deal_id=deal_id, customer_id=customer_id)
-    return RedirectResponse(f"/generate/commission-invoices/{ci_id}?saved=1", status_code=303)
-
-
-@app.get("/generate/commission-invoices/{ci_id}", response_class=HTMLResponse)
-async def ci_detail_page(request: Request, ci_id: int):
-    ci = get_commission_invoice(ci_id)
-    if not ci:
-        return RedirectResponse("/generate/commission-invoices", status_code=303)
-    saved_msg = "Saved successfully." if request.query_params.get("saved") else None
-    return templates.TemplateResponse(
-        "generate/commission_invoices/ci_detail.html",
-        {"request": request, "ci": ci, "saved_msg": saved_msg},
-    )
-
-
-@app.get("/generate/commission-invoices/{ci_id}/edit", response_class=HTMLResponse)
-async def ci_edit_page(request: Request, ci_id: int):
-    ci = get_commission_invoice(ci_id)
-    if not ci:
-        return RedirectResponse("/generate/commission-invoices", status_code=303)
-    return templates.TemplateResponse(
-        "generate/commission_invoices/ci_editor.html",
-        {"request": request, "ci": ci, "editing": True, "errors": []},
-    )
-
-
-@app.post("/generate/commission-invoices/{ci_id}/edit", response_class=HTMLResponse)
-async def ci_edit_post(request: Request, ci_id: int):
-    form = await request.form()
-    data, line_items = parse_ci_form(form)
-    if not data.get("invoice_number"):
-        ci = get_commission_invoice(ci_id) or {}
-        ci.update(data)
-        ci["line_items"] = line_items
-        return templates.TemplateResponse(
-            "generate/commission_invoices/ci_editor.html",
-            {"request": request, "ci": ci, "editing": True,
-             "errors": ["Invoice number is required."]},
-            status_code=422,
-        )
-    from app.commission_invoices import update_commission_invoice
-    update_commission_invoice(ci_id, data, line_items)
-    return RedirectResponse(f"/generate/commission-invoices/{ci_id}?saved=1", status_code=303)
-
-
-@app.post("/generate/commission-invoices/{ci_id}/duplicate")
-async def ci_duplicate(ci_id: int):
-    new_id = duplicate_commission_invoice(ci_id)
-    if new_id:
-        return RedirectResponse(f"/generate/commission-invoices/{new_id}/edit", status_code=303)
-    return RedirectResponse("/generate/commission-invoices", status_code=303)
-
-
-@app.post("/generate/commission-invoices/{ci_id}/delete")
-async def ci_delete(ci_id: int):
-    delete_commission_invoice(ci_id)
-    return RedirectResponse("/generate/commission-invoices", status_code=303)
-
-
-@app.get("/generate/commission-invoices/{ci_id}/print", response_class=HTMLResponse)
-async def ci_print_page(request: Request, ci_id: int):
-    ci = get_commission_invoice(ci_id)
-    if not ci:
-        return RedirectResponse("/generate/commission-invoices", status_code=303)
-    return templates.TemplateResponse(
-        "generate/commission_invoices/ci_print.html",
-        {"request": request, "ci": ci},
-    )
-
-
-@app.get("/generate/commission-invoices/{ci_id}/export.xlsx")
-async def ci_export_xlsx_route(ci_id: int):
-    ci = get_commission_invoice_for_export(ci_id)
-    if not ci:
-        return RedirectResponse("/generate/commission-invoices", status_code=303)
-    content, fname = export_ci_xlsx(ci)
-    return _download_response(
-        content, fname,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-
-# ── Sales (Commercial) Invoice routes ─────────────────────────────────────────
-# Remove this entire block (and the SI imports above) to drop the feature.
-# ═════════════════════════════════════════════════════════════════════════════
-
-@app.get("/generate/sales-invoices", response_class=HTMLResponse)
-async def si_list_page(request: Request):
-    rows = list_sales_invoices()
-    return templates.TemplateResponse(
-        "generate/sales_invoices/si_list.html",
-        {"request": request, "rows": rows},
-    )
-
-
-@app.get("/generate/sales-invoices/new", response_class=HTMLResponse)
-async def si_new_page(
-    request: Request,
-    deal_id: int = Query(0),
-    deal_ids: str = Query(""),
-    blank: str = Query(""),
-):
-    if not deal_id and not deal_ids and blank != "1":
-        return templates.TemplateResponse(
-            "generate/sales_invoices/si_pick_deal.html",
-            {"request": request},
-        )
-    from copy import deepcopy
-    ids: list[int] = []
-    if deal_ids:
-        ids = [int(x) for x in deal_ids.split(",") if x.strip().isdigit()]
-    elif deal_id:
-        ids = [deal_id]
-    if ids:
-        si = create_si_from_deals(ids) or deepcopy(DEFAULT_SI)
-    else:
-        si = deepcopy(DEFAULT_SI)
-    return templates.TemplateResponse(
-        "generate/sales_invoices/si_editor.html",
-        {"request": request, "si": si, "editing": False, "errors": []},
-    )
-
-
-@app.post("/generate/sales-invoices/new", response_class=HTMLResponse)
-async def si_new_post(request: Request):
-    form = await request.form()
-    data, line_items = parse_si_form(form)
-    if not data.get("invoice_number"):
-        return templates.TemplateResponse(
-            "generate/sales_invoices/si_editor.html",
-            {"request": request, "si": {**data, "line_items": line_items},
-             "editing": False, "errors": ["Invoice number is required."]},
-            status_code=422,
-        )
-    deal_id     = int(form.get("deal_id") or 0) or None
-    customer_id = int(form.get("customer_id") or 0) or None
-    si_id = create_sales_invoice(data, line_items, deal_id=deal_id, customer_id=customer_id)
-    return RedirectResponse(f"/generate/sales-invoices/{si_id}?saved=1", status_code=303)
-
-
-@app.get("/generate/sales-invoices/{si_id}", response_class=HTMLResponse)
-async def si_detail_page(request: Request, si_id: int):
-    si = get_sales_invoice(si_id)
-    if not si:
-        return RedirectResponse("/generate/sales-invoices", status_code=303)
-    saved_msg = "Saved successfully." if request.query_params.get("saved") else None
-    return templates.TemplateResponse(
-        "generate/sales_invoices/si_detail.html",
-        {"request": request, "si": si, "saved_msg": saved_msg},
-    )
-
-
-@app.get("/generate/sales-invoices/{si_id}/edit", response_class=HTMLResponse)
-async def si_edit_page(request: Request, si_id: int):
-    si = get_sales_invoice(si_id)
-    if not si:
-        return RedirectResponse("/generate/sales-invoices", status_code=303)
-    return templates.TemplateResponse(
-        "generate/sales_invoices/si_editor.html",
-        {"request": request, "si": si, "editing": True, "errors": []},
-    )
-
-
-@app.post("/generate/sales-invoices/{si_id}/edit", response_class=HTMLResponse)
-async def si_edit_post(request: Request, si_id: int):
-    form = await request.form()
-    data, line_items = parse_si_form(form)
-    if not data.get("invoice_number"):
-        si = get_sales_invoice(si_id) or {}
-        si.update(data)
-        si["line_items"] = line_items
-        return templates.TemplateResponse(
-            "generate/sales_invoices/si_editor.html",
-            {"request": request, "si": si, "editing": True,
-             "errors": ["Invoice number is required."]},
-            status_code=422,
-        )
-    from app.sales_invoices import update_sales_invoice
-    update_sales_invoice(si_id, data, line_items)
-    return RedirectResponse(f"/generate/sales-invoices/{si_id}?saved=1", status_code=303)
-
-
-@app.post("/generate/sales-invoices/{si_id}/duplicate")
-async def si_duplicate(si_id: int):
-    new_id = duplicate_sales_invoice(si_id)
-    if new_id:
-        return RedirectResponse(f"/generate/sales-invoices/{new_id}/edit", status_code=303)
-    return RedirectResponse("/generate/sales-invoices", status_code=303)
-
-
-@app.post("/generate/sales-invoices/{si_id}/delete")
-async def si_delete(si_id: int):
-    delete_sales_invoice(si_id)
-    return RedirectResponse("/generate/sales-invoices", status_code=303)
-
-
-@app.get("/generate/sales-invoices/{si_id}/print", response_class=HTMLResponse)
-async def si_print_page(request: Request, si_id: int):
-    si = get_sales_invoice(si_id)
-    if not si:
-        return RedirectResponse("/generate/sales-invoices", status_code=303)
-    return templates.TemplateResponse(
-        "generate/sales_invoices/si_print.html",
-        {"request": request, "si": si},
-    )
-
-
-@app.get("/generate/sales-invoices/{si_id}/export.xlsx")
-async def si_export_xlsx_route(si_id: int):
-    si = get_sales_invoice_for_export(si_id)
-    if not si:
-        return RedirectResponse("/generate/sales-invoices", status_code=303)
-    content, fname = export_si_xlsx(si)
-    return _download_response(
-        content, fname,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-
-# ── Delivery Note routes ──────────────────────────────────────────────────────
-# Remove this entire block (and the DN imports above) to drop the feature.
-# ═════════════════════════════════════════════════════════════════════════════
-
-@app.get("/generate/delivery-notes", response_class=HTMLResponse)
-async def dn_list_page(request: Request):
-    rows = list_delivery_notes()
-    return templates.TemplateResponse(
-        "generate/delivery_notes/dn_list.html",
-        {"request": request, "rows": rows},
-    )
-
-
-@app.get("/generate/delivery-notes/new", response_class=HTMLResponse)
-async def dn_new_page(
-    request: Request,
-    deal_id: int = Query(0),
-    blank: str = Query(""),
-):
-    if not deal_id and blank != "1":
-        return templates.TemplateResponse(
-            "generate/delivery_notes/dn_pick_deal.html",
-            {"request": request},
-        )
-    from copy import deepcopy
-    if deal_id:
-        dn = create_dn_from_deal(deal_id) or deepcopy(DEFAULT_DN)
-    else:
-        dn = deepcopy(DEFAULT_DN)
-    return templates.TemplateResponse(
-        "generate/delivery_notes/dn_editor.html",
-        {"request": request, "dn": dn, "editing": False, "errors": []},
-    )
-
-
-@app.post("/generate/delivery-notes/new", response_class=HTMLResponse)
-async def dn_new_post(request: Request):
-    form = await request.form()
-    dn   = parse_dn_form(form)
-    if not dn.get("reference_number"):
-        return templates.TemplateResponse(
-            "generate/delivery_notes/dn_editor.html",
-            {"request": request, "dn": dn, "editing": False,
-             "errors": ["Reference number is required."]},
-            status_code=422,
-        )
-    deal_id     = int(form.get("deal_id") or 0) or None
-    customer_id = int(form.get("customer_id") or 0) or None
-    dn_id = create_delivery_note(dn, deal_id=deal_id, customer_id=customer_id)
-    return RedirectResponse(f"/generate/delivery-notes/{dn_id}?saved=1", status_code=303)
-
-
-@app.get("/generate/delivery-notes/{dn_id}", response_class=HTMLResponse)
-async def dn_detail_page(request: Request, dn_id: int):
-    dn = get_delivery_note(dn_id)
-    if not dn:
-        return RedirectResponse("/generate/delivery-notes", status_code=303)
-    saved_msg = "Saved successfully." if request.query_params.get("saved") else None
-    return templates.TemplateResponse(
-        "generate/delivery_notes/dn_detail.html",
-        {"request": request, "dn": dn, "saved_msg": saved_msg},
-    )
-
-
-@app.get("/generate/delivery-notes/{dn_id}/edit", response_class=HTMLResponse)
-async def dn_edit_page(request: Request, dn_id: int):
-    dn = get_delivery_note(dn_id)
-    if not dn:
-        return RedirectResponse("/generate/delivery-notes", status_code=303)
-    return templates.TemplateResponse(
-        "generate/delivery_notes/dn_editor.html",
-        {"request": request, "dn": dn, "editing": True, "errors": []},
-    )
-
-
-@app.post("/generate/delivery-notes/{dn_id}/edit", response_class=HTMLResponse)
-async def dn_edit_post(request: Request, dn_id: int):
-    form = await request.form()
-    dn   = parse_dn_form(form)
-    if not dn.get("reference_number"):
-        existing = get_delivery_note(dn_id) or {}
-        existing.update(dn)
-        return templates.TemplateResponse(
-            "generate/delivery_notes/dn_editor.html",
-            {"request": request, "dn": existing, "editing": True,
-             "errors": ["Reference number is required."]},
-            status_code=422,
-        )
-    from app.delivery_notes import update_delivery_note
-    update_delivery_note(dn_id, dn)
-    return RedirectResponse(f"/generate/delivery-notes/{dn_id}?saved=1", status_code=303)
-
-
-@app.post("/generate/delivery-notes/{dn_id}/duplicate")
-async def dn_duplicate(dn_id: int):
-    new_id = duplicate_delivery_note(dn_id)
-    if new_id:
-        return RedirectResponse(f"/generate/delivery-notes/{new_id}/edit", status_code=303)
-    return RedirectResponse("/generate/delivery-notes", status_code=303)
-
-
-@app.post("/generate/delivery-notes/{dn_id}/delete")
-async def dn_delete(dn_id: int):
-    delete_delivery_note(dn_id)
-    return RedirectResponse("/generate/delivery-notes", status_code=303)
-
-
-@app.get("/generate/delivery-notes/{dn_id}/print", response_class=HTMLResponse)
-async def dn_print_page(request: Request, dn_id: int):
-    dn = get_delivery_note(dn_id)
-    if not dn:
-        return RedirectResponse("/generate/delivery-notes", status_code=303)
-    return templates.TemplateResponse(
-        "generate/delivery_notes/dn_print.html",
-        {"request": request, "dn": dn},
-    )
-
-
-@app.get("/generate/delivery-notes/{dn_id}/export.xlsx")
-async def dn_export_xlsx_route(dn_id: int):
-    dn = get_delivery_note(dn_id)
-    if not dn:
-        return RedirectResponse("/generate/delivery-notes", status_code=303)
-    content, fname = export_dn_xlsx(dn)
-    return _download_response(
-        content, fname,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )

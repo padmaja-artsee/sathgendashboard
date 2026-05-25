@@ -12,7 +12,7 @@
 
 <div class="filters" style="margin-bottom:1.25rem">
   <a href="/add?tab=log"     class="filter-pill {% if tab != 'lead' %}active{% endif %}">Deals &amp; Activity</a>
-  <a href="/add?tab=lead"    class="filter-pill {% if tab == 'lead' %}active{% endif %}">Leads</a>
+  <a href="/add?tab=lead"    class="filter-pill {% if tab == 'lead' %}active{% endif %}">Contacts</a>
 </div>
 
 {# ══════════════════════════════════════════════════════════
@@ -206,22 +206,20 @@
 ══════════════════════════════════════════════════════════ #}
 {% else %}
 <div class="card" style="max-width:720px">
-  <div class="card-header"><h2>Add or update lead</h2></div>
+  <div class="card-header"><h2>Add or update contact</h2></div>
   <form method="post" action="/add/contact" class="form-grid">
     <div class="full"><label>Company *</label><input name="company" required list="customers" value="{{ preset_company }}" /></div>
     <div><label>Contact name</label><input name="contact" value="{{ lead.contact if lead else '' }}" /></div>
     <div><label>Email</label><input name="email" type="email" value="{{ lead.email if lead else '' }}" /></div>
-    <div><label>Website</label><input name="website" value="{{ lead.website if lead else '' }}" /></div>
     <div><label>Phone</label><input name="phone" value="{{ lead.phone if lead else '' }}" /></div>
-    <div class="full"><label>Products interested in</label><input name="products_interested" list="products" value="{{ lead.products_interested if lead else '' }}" /></div>
+    <div><label>Website</label><input name="website" value="{{ lead.website if lead else '' }}" /></div>
     <div class="full"><label>Notes</label><textarea name="notes" rows="2">{{ lead.notes if lead else '' }}</textarea></div>
-    <div class="full"><button type="submit" class="btn btn-primary">Save company</button></div>
+    <div class="full"><button type="submit" class="btn btn-primary">Save contact</button></div>
   </form>
 </div>
 {% endif %}
 
 <datalist id="customers">{% for c in customers %}<option value="{{ c.name }}">{% endfor %}</datalist>
-<datalist id="products">{% for p in products %}<option value="{{ p.name }}">{% endfor %}</datalist>
 <datalist id="quantity-unit-suggestions">
   {% for u in quantity_units if u not in ['MT', 'FCL', 'Other'] %}<option value="{{ u }}">{% endfor %}
 </datalist>

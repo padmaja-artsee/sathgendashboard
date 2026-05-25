@@ -1,58 +1,38 @@
-"""CSV and Excel export for summary and shipping sheets."""
+"""CSV and Excel export helpers."""
 import csv
 import io
 from typing import Any, Optional
 
 from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 
-from app.database import format_quantity_display
-from app.xl_style import (
-    auto_col_widths,
-    freeze_header,
-    style_data_row,
-    style_header_row,
-)
 
-ROLLUP_PRODUCT_COLUMNS = [
-    ("Product", "product"),
-    ("Customers", "customers"),
-    ("Activities", "activities"),
-    ("Last activity", "last_activity"),
+LEADS_COLUMNS: list[tuple[str, str]] = [
+    ("Company", "company"),
+    ("Contact", "contact"),
+    ("Email", "email"),
+    ("Phone", "phone"),
+    ("Website", "website"),
+    ("Notes", "notes"),
+    ("Last Updated", "updated_at"),
 ]
 
 ROLLUP_CUSTOMER_COLUMNS = [
     ("Customer", "customer"),
-    ("Products", "products"),
     ("Activities", "activities"),
     ("Last activity", "last_activity"),
 ]
 
-SHIPPING_COLUMNS = [
-    ("Company", "company"),
-    ("Product", "product"),
-    ("Status", "status"),
-    ("PO #", "po_number"),
-    ("PO date", "po_date"),
-    ("Quantity", "_quantity_display"),
-    ("Packing", "packing"),
-    ("GBL invoice", "gbl_invoice"),
-    ("GBL invoice date", "gbl_invoice_date"),
-    ("Container #", "container_number"),
-    ("Vessel", "vessel_name"),
-    ("ETD India", "etd_india"),
-    ("Transit time", "transit_time"),
-    ("Destination", "destination"),
-    ("ETA", "eta"),
-    ("Deal ID", "deal_id"),
-]
+
+def rollup_columns(group: str) -> list[tuple[str, str]]:
+    return ROLLUP_CUSTOMER_COLUMNS
+
+
+def rollup_sheet_name(group: str) -> str:
+    return "By customer"
 
 
 def _cell(row: dict[str, Any], key: str) -> Any:
-    if key == "_quantity_display":
-        return format_quantity_display(
-            row.get("quantity") or "",
-            row.get("quantity_unit") or "MT",
-        )
     val = row.get(key)
     return "" if val is None else val
 
@@ -62,14 +42,6 @@ def project_rows(
     columns: list[tuple[str, str]],
 ) -> list[dict[str, Any]]:
     return [{label: _cell(row, key) for label, key in columns} for row in rows]
-
-
-def rollup_columns(group: str) -> list[tuple[str, str]]:
-    return ROLLUP_CUSTOMER_COLUMNS if group == "customer" else ROLLUP_PRODUCT_COLUMNS
-
-
-def rollup_sheet_name(group: str) -> str:
-    return "By customer" if group == "customer" else "By product"
 
 
 def to_csv_bytes(rows: list[dict[str, Any]], columns: list[tuple[str, str]]) -> bytes:
@@ -89,31 +61,36 @@ def to_xlsx_bytes(
     sheets: list[tuple[str, list[dict[str, Any]], list[tuple[str, str]]]],
 ) -> bytes:
     wb = Workbook()
-    # Remove default empty sheet.
     wb.remove(wb.active)
+
+    header_fill = PatternFill("solid", fgColor="1A5632")
+    header_font = Font(bold=True, color="FFFFFF", size=10)
+    alt_fill = PatternFill("solid", fgColor="F0F7F3")
 
     for sheet_name, rows, columns in sheets:
         projected = project_rows(rows, columns)
-        safe_name = sheet_name[:31]
-        ws = wb.create_sheet(title=safe_name)
+        ws = wb.create_sheet(title=sheet_name[:31])
 
         headers = [label for label, _ in columns]
         ws.append(headers)
-
-        for row in projected:
-            ws.append([row.get(h, "") for h in headers])
-
-        n_cols = len(columns)
-        style_header_row(ws, row=1, col_start=1, col_end=n_cols)
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="left", vertical="center")
         ws.row_dimensions[1].height = 18
 
-        for r_idx in range(2, ws.max_row + 1):
-            style_data_row(ws, row=r_idx, col_start=1, col_end=n_cols,
-                           alternate=(r_idx % 2 == 0))
+        for r_idx, row in enumerate(projected, start=2):
+            ws.append([row.get(h, "") for h in headers])
+            if r_idx % 2 == 0:
+                for cell in ws[r_idx]:
+                    cell.fill = alt_fill
             ws.row_dimensions[r_idx].height = 15
 
-        auto_col_widths(ws, col_start=1, col_end=n_cols)
-        freeze_header(ws, row=1)
+        for col in ws.columns:
+            max_len = max((len(str(cell.value or "")) for cell in col), default=10)
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
+
+        ws.freeze_panes = "A2"
 
     buf = io.BytesIO()
     wb.save(buf)

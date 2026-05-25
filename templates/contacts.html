@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Contacts{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Contacts</h1>
+    <p class="subtitle">Company rolodex — name, contact, email, phone, website.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center">
+    <a href="/contacts/export.xlsx?company={{ company | urlencode }}&q={{ q | urlencode }}" class="btn btn-ghost btn-sm">↓ Export Excel</a>
+    <a href="/add?tab=lead" class="btn btn-primary">+ Add contact</a>
+  </div>
+</div>
+
+<div class="card">
+  <form class="search-bar" method="get" action="/contacts">
+    <div>
+      <label class="field-label">Company</label>
+      <input name="company" value="{{ company }}" placeholder="Company name" />
+    </div>
+    <div>
+      <label class="field-label">Search</label>
+      <input name="q" value="{{ q }}" placeholder="Name, email, website…" />
+    </div>
+    <div class="search-actions">
+      <button type="submit" class="btn btn-primary">Search</button>
+      <a href="/contacts" class="btn btn-ghost">Clear</a>
+    </div>
+  </form>
+  <div class="card-body">
+    {% if contacts %}
+    <table>
+      <thead>
+        <tr>
+          <th>Company</th>
+          <th>Contact</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Website</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for c in contacts %}
+      <tr>
+        <td><a class="link" href="/customer?name={{ c.company | urlencode }}"><strong>{{ c.company }}</strong></a></td>
+        <td>
+          {{ c.contact or '—' }}
+          {% if c.contact_count and c.contact_count > 1 %}
+          <span class="muted"> (+{{ c.contact_count - 1 }})</span>
+          {% endif %}
+        </td>
+        <td>{% if c.email %}<a class="link" href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}—{% endif %}</td>
+        <td>{{ c.phone or '—' }}</td>
+        <td>{% if c.website %}<a class="link" href="{{ c.website if c.website.startswith('http') else 'https://' + c.website }}" target="_blank" rel="noopener">{{ c.website }}</a>{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No contacts yet. <a class="link" href="/add?tab=lead">Add your first contact</a></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
