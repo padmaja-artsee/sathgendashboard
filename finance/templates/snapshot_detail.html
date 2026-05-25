@@ -108,12 +108,29 @@ new Chart(document.getElementById("snapChart"), {
 
 function downloadChart(canvasId, filename) {
   const canvas = document.getElementById(canvasId);
+  const title  = "{{ snap.name }} — Financials as of {{ snap.snapshot_date }}";
+  const pad = 14, titleH = 36, subH = 20;
   const off = document.createElement("canvas");
-  off.width = canvas.width; off.height = canvas.height;
+  off.width  = canvas.width;
+  off.height = canvas.height + titleH + subH + pad * 2;
   const ctx = off.getContext("2d");
+
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0,0,off.width,off.height);
-  ctx.drawImage(canvas,0,0);
+  ctx.fillRect(0, 0, off.width, off.height);
+
+  ctx.fillStyle = "#1C5631";
+  ctx.font = "bold 15px system-ui, sans-serif";
+  ctx.fillText("Sathgen Therapeutics — Finance", pad, pad + 14);
+  ctx.fillStyle = "#222222";
+  ctx.font = "bold 13px system-ui, sans-serif";
+  ctx.fillText(title, pad, pad + 14 + subH);
+
+  ctx.drawImage(canvas, 0, titleH + subH + pad * 2);
+
+  ctx.fillStyle = "#aaaaaa";
+  ctx.font = "10px system-ui, sans-serif";
+  ctx.fillText("Generated " + new Date().toLocaleDateString(), pad, off.height - 4);
+
   const a = document.createElement("a");
   a.download = filename; a.href = off.toDataURL("image/png"); a.click();
 }

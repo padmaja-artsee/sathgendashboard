@@ -80,7 +80,7 @@
   <div class="f-card f-card-wide" id="mainChartCard">
     <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
       <span id="mainChartTitle">Monthly Budget vs Actuals</span>
-      <button onclick="downloadChart('mainChart','Sathgen-BudgetVsActual-FY{{ fy }}.png')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
+      <button onclick="downloadChart('mainChart','Sathgen-BudgetVsActual-FY{{ fy }}.png', document.getElementById('mainChartTitle').textContent + ' — FY{{ fy }}')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
     </div>
     <canvas id="mainChart" height="90"></canvas>
   </div>
@@ -89,7 +89,7 @@
   <div class="f-card" id="breakdownCard" style="display:none;max-width:480px">
     <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
       <span>Expense Breakdown by Category</span>
-      <button onclick="downloadChart('breakdownChart','Sathgen-Breakdown-FY{{ fy }}.png')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
+      <button onclick="downloadChart('breakdownChart','Sathgen-Breakdown-FY{{ fy }}.png','Expense Breakdown — FY{{ fy }}')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
     </div>
     <canvas id="breakdownChart" height="200"></canvas>
   </div>
@@ -98,7 +98,7 @@
   <div class="f-card f-card-wide" id="netChartCard">
     <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
       <span>Cumulative Net (Income − Expenses)</span>
-      <button onclick="downloadChart('netChart','Sathgen-NetTrend-FY{{ fy }}.png')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
+      <button onclick="downloadChart('netChart','Sathgen-NetTrend-FY{{ fy }}.png','Cumulative Net (Income − Expenses) — FY{{ fy }}')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
     </div>
     <canvas id="netChart" height="70"></canvas>
   </div>
@@ -388,14 +388,38 @@ function renderBreakdown() {
   });
 }
 
-function downloadChart(canvasId, filename) {
+function downloadChart(canvasId, filename, title) {
   const canvas = document.getElementById(canvasId);
+  const pad = 14;
+  const titleH = title ? 36 : 0;
+  const subH   = title ? 20 : 0;
   const off = document.createElement("canvas");
-  off.width = canvas.width; off.height = canvas.height;
+  off.width  = canvas.width;
+  off.height = canvas.height + titleH + subH + pad * 2;
   const ctx = off.getContext("2d");
+
+  // White background
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, off.width, off.height);
-  ctx.drawImage(canvas, 0, 0);
+
+  // Title
+  if (title) {
+    ctx.fillStyle = "#1C5631";
+    ctx.font = "bold 15px system-ui, sans-serif";
+    ctx.fillText("Sathgen Therapeutics — Finance", pad, pad + 14);
+    ctx.fillStyle = "#222222";
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillText(title, pad, pad + 14 + subH);
+  }
+
+  // Chart
+  ctx.drawImage(canvas, 0, titleH + subH + pad * 2);
+
+  // Footer
+  ctx.fillStyle = "#aaaaaa";
+  ctx.font = "10px system-ui, sans-serif";
+  ctx.fillText("Generated " + new Date().toLocaleDateString(), pad, off.height - 4);
+
   const a = document.createElement("a");
   a.download = filename; a.href = off.toDataURL("image/png"); a.click();
 }
