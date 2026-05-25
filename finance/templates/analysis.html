@@ -47,7 +47,7 @@
   <div class="f-filter-group">
     <label class="f-filter-label">View</label>
     <select id="filterCategory" class="f-select-sm" onchange="onCategoryChange()">
-      <option value="net">Net (Income − Expenses)</option>
+      <option value="net">Balance</option>
       <option value="income">Income</option>
       <option value="expenses">Total Expenses</option>
       <option value="employee">↳ Employee Costs</option>
@@ -97,8 +97,8 @@
   <!-- Net trend line (always visible in bar/line mode) -->
   <div class="f-card f-card-wide" id="netChartCard">
     <div class="f-card-header" style="display:flex;justify-content:space-between;align-items:center">
-      <span>Cumulative Net (Income − Expenses)</span>
-      <button onclick="downloadChart('netChart','Sathgen-NetTrend-FY{{ fy }}.png','Cumulative Net (Income − Expenses) — FY{{ fy }}')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
+      <span>Cumulative Balance</span>
+      <button onclick="downloadChart('netChart','Sathgen-NetTrend-FY{{ fy }}.png','Cumulative Balance — FY{{ fy }}')" class="f-btn-sm f-btn-outline">↓ Save chart</button>
     </div>
     <canvas id="netChart" height="70"></canvas>
   </div>
@@ -308,7 +308,7 @@ function renderCharts() {
     data: {
       labels: MONTHS,
       datasets: [{
-        label: "Cumulative Net",
+        label: "Cumulative Balance",
         data: net,
         borderColor: "#1E8449", backgroundColor: "rgba(39,174,96,.12)",
         borderWidth: 2.5, fill: true, tension: .4,

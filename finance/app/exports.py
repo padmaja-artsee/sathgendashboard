@@ -232,7 +232,7 @@ SECTION_STYLES_XL = {
     "Total Admin":             ("subtotal", _GREEN_L, True),
     "Total Travel":            ("subtotal", _GREEN_L, True),
     "Total Expenses":          ("highlight","FFF9C4",  True),
-    "Net (Income - Expenses)": ("total",    _GREEN_L,  True),
+    "Balance": ("total",    _GREEN_L,  True),
 }
 
 

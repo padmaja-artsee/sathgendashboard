@@ -68,7 +68,7 @@ SECTION_STYLES = {
     "Total Admin":             "subtotal",
     "Total Travel":            "subtotal",
     "Total Expenses":          "highlight",
-    "Net (Income - Expenses)": "total",
+    "Balance": "total",
 }
 
 
@@ -95,7 +95,7 @@ def _build_rows(grid: dict, items: list[dict]) -> list[dict]:
     for item in items:
         lid = item["id"]
         monthly = {m: full.get((lid, m), 0.0) for m in FY_MONTHS}
-        if item["name"] == "Net (Income - Expenses)":
+        if item["name"] == "Balance":
             # Compute as Total Income total − Total Expenses total (not sum of monthly cells)
             inc_lid = by_name.get("Total Income")
             exp_lid = by_name.get("Total Expenses")
@@ -156,7 +156,7 @@ async def dashboard(request: Request, fy: int = Query(0)):
         request, fy=fy, fiscal_years=fys, archived=is_archived(fy),
         total_income    = _tot(a_grid, "Total Income"),
         total_expenses  = _tot(a_grid, "Total Expenses"),
-        net             = _tot(a_grid, "Net (Income - Expenses)"),
+        net             = _tot(a_grid, "Balance"),
         budget_expenses = _tot(b_grid, "Total Expenses"),
         chart_months=chart_months, exp_budget=exp_budget,
         exp_actual=exp_actual, income_actual=income_actual,
@@ -583,8 +583,8 @@ async def report_page(
 
     total_expenses_actual = _sum(a_grid, "Total Expenses")
     total_expenses_budget = _sum(b_grid, "Total Expenses")
-    net_actual = _sum(a_grid, "Net (Income - Expenses)")
-    net_budget = _sum(b_grid, "Net (Income - Expenses)")
+    net_actual = _sum(a_grid, "Balance")
+    net_budget = _sum(b_grid, "Balance")
 
     return templates.TemplateResponse("report.html", _ctx(
         request, fy=fy, fiscal_years=fys, view=view, month=month,
@@ -858,8 +858,8 @@ async def export_report(
         expense_sections=expense_sections,
         total_expenses_actual=_sum("Total Expenses"),
         total_expenses_budget=_bsum("Total Expenses"),
-        net_actual=_sum("Net (Income - Expenses)"),
-        net_budget=_bsum("Net (Income - Expenses)"),
+        net_actual=_sum("Balance"),
+        net_budget=_bsum("Balance"),
         fiscal_year=fy,
     )
     return _excel_response(content, fname)

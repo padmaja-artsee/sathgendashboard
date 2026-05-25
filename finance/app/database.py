@@ -120,7 +120,7 @@ LINE_ITEMS_SEED = [
     ("travel",   "Total Travel",              1, 1, 99),
     # ── Grand totals ────────────────────────────────────────────────────────
     ("totals",   "Total Expenses",            1, 1, 10),
-    ("totals",   "Net (Income - Expenses)",   1, 1, 20),
+    ("totals",   "Balance",   1, 1, 20),
 ]
 
 # Items added after initial release — used by the migration to patch existing DBs
@@ -395,6 +395,11 @@ def _run_migrations(conn) -> None:
         conn.execute("UPDATE line_items SET name='Transfer' WHERE name='Commission Income' AND section='income'")
         conn.execute("UPDATE accounts SET name='Transfer' WHERE name='Commission Income' AND section='income'")
 
+    # Rename "Net (Income - Expenses)" → "Balance" if still present
+    conn.execute(
+        "UPDATE line_items SET name='Balance' WHERE name='Net (Income - Expenses)' AND section='totals'"
+    )
+
     # 1. Add missing line items (INSERT OR IGNORE respects UNIQUE(section,name))
     conn.executemany(
         "INSERT OR IGNORE INTO line_items "
@@ -544,7 +549,7 @@ def compute_grid(raw: dict, items: list[dict], opening_balance: float = 0.0) -> 
             ("Total Admin",             tad),
             ("Total Travel",            ttr),
             ("Total Expenses",          tex),
-            ("Net (Income - Expenses)", net),
+            ("Balance", net),
         ]:
             if name in by_name:
                 result[(by_name[name], month)] = val
