@@ -88,6 +88,10 @@ def create_transaction(
     currency: str = "USD", transaction_type: str = "expense",
     payment_account_id: int = None, vendor_id: int = None,
     reference: str = "", notes: str = "", receipt_filename: str = "",
+    wire_sender_name: str = "", wire_sender_bank: str = "",
+    wire_sender_account: str = "", wire_receiver_bank: str = "",
+    wire_receiver_account: str = "", wire_swift_bic: str = "",
+    wire_iban: str = "",
 ) -> int:
     fy, month = fiscal_year_for_date(date)
     now = _now()
@@ -96,11 +100,15 @@ def create_transaction(
             """INSERT INTO transactions
                (date,account_id,amount,currency,transaction_type,
                 payment_account_id,vendor_id,reference,notes,
-                receipt_filename,fiscal_year,month,created_at,updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                receipt_filename,fiscal_year,month,created_at,updated_at,
+                wire_sender_name,wire_sender_bank,wire_sender_account,
+                wire_receiver_bank,wire_receiver_account,wire_swift_bic,wire_iban)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (date, account_id, amount, currency, transaction_type,
              payment_account_id, vendor_id, reference, notes,
-             receipt_filename, fy, month, now, now)
+             receipt_filename, fy, month, now, now,
+             wire_sender_name, wire_sender_bank, wire_sender_account,
+             wire_receiver_bank, wire_receiver_account, wire_swift_bic, wire_iban)
         )
         return cur.lastrowid
 
@@ -110,29 +118,39 @@ def update_transaction(
     currency: str = "USD", transaction_type: str = "expense",
     payment_account_id: int = None, vendor_id: int = None,
     reference: str = "", notes: str = "", receipt_filename: str = None,
+    wire_sender_name: str = "", wire_sender_bank: str = "",
+    wire_sender_account: str = "", wire_receiver_bank: str = "",
+    wire_receiver_account: str = "", wire_swift_bic: str = "",
+    wire_iban: str = "",
 ) -> None:
     fy, month = fiscal_year_for_date(date)
     now = _now()
+    wire_fields = (wire_sender_name, wire_sender_bank, wire_sender_account,
+                   wire_receiver_bank, wire_receiver_account, wire_swift_bic, wire_iban)
     with get_db() as conn:
         if receipt_filename is not None:
             conn.execute(
                 """UPDATE transactions SET date=?,account_id=?,amount=?,currency=?,
                    transaction_type=?,payment_account_id=?,vendor_id=?,reference=?,
-                   notes=?,receipt_filename=?,fiscal_year=?,month=?,updated_at=?
+                   notes=?,receipt_filename=?,fiscal_year=?,month=?,updated_at=?,
+                   wire_sender_name=?,wire_sender_bank=?,wire_sender_account=?,
+                   wire_receiver_bank=?,wire_receiver_account=?,wire_swift_bic=?,wire_iban=?
                    WHERE id=?""",
                 (date, account_id, amount, currency, transaction_type,
                  payment_account_id, vendor_id, reference, notes,
-                 receipt_filename, fy, month, now, tx_id)
+                 receipt_filename, fy, month, now, *wire_fields, tx_id)
             )
         else:
             conn.execute(
                 """UPDATE transactions SET date=?,account_id=?,amount=?,currency=?,
                    transaction_type=?,payment_account_id=?,vendor_id=?,reference=?,
-                   notes=?,fiscal_year=?,month=?,updated_at=?
+                   notes=?,fiscal_year=?,month=?,updated_at=?,
+                   wire_sender_name=?,wire_sender_bank=?,wire_sender_account=?,
+                   wire_receiver_bank=?,wire_receiver_account=?,wire_swift_bic=?,wire_iban=?
                    WHERE id=?""",
                 (date, account_id, amount, currency, transaction_type,
                  payment_account_id, vendor_id, reference, notes,
-                 fy, month, now, tx_id)
+                 fy, month, now, *wire_fields, tx_id)
             )
 
 

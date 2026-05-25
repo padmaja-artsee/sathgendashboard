@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% set page = "income_list" if tx_type == "income" else "expenses" %}
-{% block title %}{{ "Income" if tx_type=="income" else "Expenses" }} — FY{{ fy }}{% endblock %}
+{% block title %}{{ "Transfers" if tx_type=="income" else "Expenses" }} — FY{{ fy }}{% endblock %}
 {% block content %}
 <div class="f-page-header">
   <div>
-    <h1 class="f-title">{{ "Income Entries" if tx_type=="income" else "Expenses" }} — FY{{ fy }}</h1>
+    <h1 class="f-title">{{ "Wire Transfers" if tx_type=="income" else "Expenses" }} — FY{{ fy }}</h1>
     <p class="f-subtitle">{{ transactions|length }} records &mdash; Total: ${{ "{:,.2f}".format(total) }}</p>
   </div>
   <div class="f-header-controls">
@@ -23,7 +23,7 @@
       </select>
     </form>
     <a href="{{ _base }}/expenses/new?fy={{ fy }}&tx_type={{ tx_type }}&account_id={{ filter_account }}&vendor_id={{ filter_vendor }}"
-       class="f-btn-sm f-btn-primary">+ {{ "Record Income" if tx_type=="income" else "Record Expense" }}</a>
+       class="f-btn-sm f-btn-primary">+ {{ "Record Transfer" if tx_type=="income" else "Record Expense" }}</a>
     <a href="{{ _base }}/export/transactions.xlsx?fy={{ fy }}&tx_type={{ tx_type }}" class="f-btn-sm f-btn-outline">↓ Export Excel</a>
   </div>
 </div>
@@ -45,11 +45,18 @@
     <tr>
       <th>Date</th>
       <th>Account</th>
+      {% if tx_type == "income" %}
+      <th>Sender</th>
+      <th>Sender Bank</th>
+      <th>Receiver Bank</th>
+      <th>SWIFT/BIC</th>
+      {% else %}
       <th>Vendor</th>
       <th>Payment</th>
+      {% endif %}
       <th>Ref</th>
       <th class="num">Amount</th>
-      <th>Receipt</th>
+      {% if tx_type != "income" %}<th>Receipt</th>{% endif %}
       <th>Actions</th>
     </tr>
   </thead>
@@ -58,15 +65,24 @@
   <tr>
     <td>{{ t.date | fmtdate }}</td>
     <td><span class="f-acct-tag">{{ t.account_name }}</span></td>
+    {% if tx_type == "income" %}
+    <td>{{ t.wire_sender_name or "—" }}</td>
+    <td>{{ t.wire_sender_bank or "—" }}</td>
+    <td>{{ t.wire_receiver_bank or "—" }}</td>
+    <td class="f-text-muted">{{ t.wire_swift_bic or "—" }}</td>
+    {% else %}
     <td>{{ t.vendor_name or "—" }}</td>
     <td>{{ t.payment_account_name or "—" }}</td>
+    {% endif %}
     <td class="f-text-muted">{{ t.reference or "—" }}</td>
-    <td class="num f-bold">${{ "{:,.2f}".format(t.amount) }} <small class="f-text-muted">{{ t.currency }}</small></td>
+    <td class="num f-bold">{{ t.currency }} {{ "{:,.2f}".format(t.amount) }}</td>
+    {% if tx_type != "income" %}
     <td>
       {% if t.receipt_filename %}
       <a href="{{ _base }}/expenses/{{ t.id }}/receipt" target="_blank" class="f-receipt-link">📎 View</a>
       {% else %}—{% endif %}
     </td>
+    {% endif %}
     <td>
       <a href="{{ _base }}/expenses/{{ t.id }}/edit" class="f-action-btn">Edit</a>
       <form method="post" action="{{ _base }}/expenses/{{ t.id }}/delete" id="del-{{ t.id }}" style="display:inline">
@@ -83,7 +99,7 @@
 </div>
 {% else %}
 <div class="f-empty-state">
-  No {{ "income entries" if tx_type=="income" else "expenses" }} recorded for FY{{ fy }}.
+  No {{ "wire transfers" if tx_type=="income" else "expenses" }} recorded for FY{{ fy }}.
   <a href="{{ _base }}/expenses/new?fy={{ fy }}&tx_type={{ tx_type }}">Record one now.</a>
 </div>
 {% endif %}

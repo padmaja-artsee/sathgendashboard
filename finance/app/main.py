@@ -546,6 +546,10 @@ async def expense_new_save(
     payment_account_id: str = Form(""), vendor_id: str = Form(""),
     reference: str = Form(""), notes: str = Form(""),
     receipt: UploadFile = File(None),
+    wire_sender_name: str = Form(""), wire_sender_bank: str = Form(""),
+    wire_sender_account: str = Form(""), wire_receiver_bank: str = Form(""),
+    wire_receiver_account: str = Form(""), wire_swift_bic: str = Form(""),
+    wire_iban: str = Form(""),
 ):
     rfname = ""
     if receipt and receipt.filename:
@@ -557,6 +561,10 @@ async def expense_new_save(
         payment_account_id=_or_none(payment_account_id),
         vendor_id=_or_none(vendor_id),
         reference=reference, notes=notes, receipt_filename=rfname,
+        wire_sender_name=wire_sender_name, wire_sender_bank=wire_sender_bank,
+        wire_sender_account=wire_sender_account, wire_receiver_bank=wire_receiver_bank,
+        wire_receiver_account=wire_receiver_account, wire_swift_bic=wire_swift_bic,
+        wire_iban=wire_iban,
     )
     return RedirectResponse(f"{FINANCE_BASE}/expenses?fy={fy}&tx_type={tx_type}", status_code=303)
 
@@ -585,6 +593,10 @@ async def expense_edit_save(
     payment_account_id: str = Form(""), vendor_id: str = Form(""),
     reference: str = Form(""), notes: str = Form(""),
     receipt: UploadFile = File(None),
+    wire_sender_name: str = Form(""), wire_sender_bank: str = Form(""),
+    wire_sender_account: str = Form(""), wire_receiver_bank: str = Form(""),
+    wire_receiver_account: str = Form(""), wire_swift_bic: str = Form(""),
+    wire_iban: str = Form(""),
 ):
     existing = get_transaction(tx_id)
     rfname = None
@@ -601,6 +613,10 @@ async def expense_edit_save(
         payment_account_id=_or_none(payment_account_id),
         vendor_id=_or_none(vendor_id),
         reference=reference, notes=notes, receipt_filename=rfname,
+        wire_sender_name=wire_sender_name, wire_sender_bank=wire_sender_bank,
+        wire_sender_account=wire_sender_account, wire_receiver_bank=wire_receiver_bank,
+        wire_receiver_account=wire_receiver_account, wire_swift_bic=wire_swift_bic,
+        wire_iban=wire_iban,
     )
     return RedirectResponse(f"{FINANCE_BASE}/expenses?fy={fy}&tx_type={tx_type}", status_code=303)
 

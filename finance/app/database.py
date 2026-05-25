@@ -248,7 +248,7 @@ def init_db() -> None:
                 is_system    INTEGER NOT NULL DEFAULT 0
             );
 
-            -- Expense transactions (type='expense') and income (type='income')
+            -- Expense transactions (type='expense') and wire transfers (type='income')
             CREATE TABLE IF NOT EXISTS transactions (
                 id                  INTEGER PRIMARY KEY AUTOINCREMENT,
                 date                TEXT    NOT NULL,
@@ -264,7 +264,14 @@ def init_db() -> None:
                 fiscal_year         INTEGER,
                 month               INTEGER,
                 created_at          TEXT,
-                updated_at          TEXT
+                updated_at          TEXT,
+                wire_sender_name    TEXT    DEFAULT '',
+                wire_sender_bank    TEXT    DEFAULT '',
+                wire_sender_account TEXT    DEFAULT '',
+                wire_receiver_bank  TEXT    DEFAULT '',
+                wire_receiver_account TEXT  DEFAULT '',
+                wire_swift_bic      TEXT    DEFAULT '',
+                wire_iban           TEXT    DEFAULT ''
             );
 
             -- Budget entries (planned amounts)
@@ -334,6 +341,20 @@ def _seed_payment_accounts(conn) -> None:
 def _run_migrations(conn) -> None:
     """Idempotent — safe to run on every startup.
     Inserts any line items / accounts that were added after initial release."""
+    # 0. Add wire-transfer columns to transactions if they don't exist yet
+    existing_cols = {r[1] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()}
+    for col, defn in [
+        ("wire_sender_name",    "TEXT DEFAULT ''"),
+        ("wire_sender_bank",    "TEXT DEFAULT ''"),
+        ("wire_sender_account", "TEXT DEFAULT ''"),
+        ("wire_receiver_bank",  "TEXT DEFAULT ''"),
+        ("wire_receiver_account","TEXT DEFAULT ''"),
+        ("wire_swift_bic",      "TEXT DEFAULT ''"),
+        ("wire_iban",           "TEXT DEFAULT ''"),
+    ]:
+        if col not in existing_cols:
+            conn.execute(f"ALTER TABLE transactions ADD COLUMN {col} {defn}")
+
     # 1. Add missing line items (INSERT OR IGNORE respects UNIQUE(section,name))
     conn.executemany(
         "INSERT OR IGNORE INTO line_items "

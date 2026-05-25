@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% set page = "income_new" if tx_type == "income" else "expense_new" %}
-{% block title %}{{ "Record Income" if tx_type=="income" else "Record Expense" }}{% endblock %}
+{% block title %}{{ "Record Transfer" if tx_type=="income" else "Record Expense" }}{% endblock %}
 {% block content %}
 <div class="f-page-header">
-  <h1 class="f-title">{{ "Edit Income" if transaction else ("Record Income" if tx_type=="income" else "Record Expense") }}</h1>
+  <h1 class="f-title">{{ "Edit Transfer" if transaction else ("Record Transfer" if tx_type=="income" else "Record Expense") }}</h1>
 </div>
 
 <div class="f-form-card">
@@ -22,7 +22,7 @@
 
     <div class="f-field">
       <label class="f-label">
-        {{ "Income Account" if tx_type=="income" else "Expense Account" }}
+        {{ "Transfer Account" if tx_type=="income" else "Expense Account" }}
         <span class="f-required">*</span>
       </label>
       <select name="account_id" class="f-select" required>
@@ -96,13 +96,64 @@
     </div>
   </div>
 
+  <!-- Wire Transfer Details (income/transfer only) -->
+  {% if tx_type == "income" %}
+  <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid #e2e8f0;">
+    <h3 style="font-size:.85rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin:0 0 1rem;">Wire Transfer Details</h3>
+    <div class="f-form-grid">
+      <div class="f-field">
+        <label class="f-label">Sender Name</label>
+        <input type="text" name="wire_sender_name" class="f-input"
+               value="{{ transaction.wire_sender_name if transaction else '' }}"
+               placeholder="e.g. Pfizer Inc"/>
+      </div>
+      <div class="f-field">
+        <label class="f-label">Sender Bank</label>
+        <input type="text" name="wire_sender_bank" class="f-input"
+               value="{{ transaction.wire_sender_bank if transaction else '' }}"
+               placeholder="e.g. JP Morgan Chase"/>
+      </div>
+      <div class="f-field">
+        <label class="f-label">Sender Account #</label>
+        <input type="text" name="wire_sender_account" class="f-input"
+               value="{{ transaction.wire_sender_account if transaction else '' }}"
+               placeholder="e.g. 123456789"/>
+      </div>
+      <div class="f-field">
+        <label class="f-label">Receiver Bank</label>
+        <input type="text" name="wire_receiver_bank" class="f-input"
+               value="{{ transaction.wire_receiver_bank if transaction else '' }}"
+               placeholder="e.g. Bank of America"/>
+      </div>
+      <div class="f-field">
+        <label class="f-label">Receiver Account #</label>
+        <input type="text" name="wire_receiver_account" class="f-input"
+               value="{{ transaction.wire_receiver_account if transaction else '' }}"
+               placeholder="e.g. 987654321"/>
+      </div>
+      <div class="f-field">
+        <label class="f-label">SWIFT / BIC Code</label>
+        <input type="text" name="wire_swift_bic" class="f-input"
+               value="{{ transaction.wire_swift_bic if transaction else '' }}"
+               placeholder="e.g. CHASUS33"/>
+      </div>
+      <div class="f-field">
+        <label class="f-label">IBAN</label>
+        <input type="text" name="wire_iban" class="f-input"
+               value="{{ transaction.wire_iban if transaction else '' }}"
+               placeholder="e.g. DE89370400440532013000"/>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="f-field" style="margin-top:.75rem">
     <label class="f-label">Notes</label>
     <textarea name="notes" class="f-textarea" rows="2"
               placeholder="Optional notes…">{{ transaction.notes if transaction else '' }}</textarea>
   </div>
 
-  <!-- Receipt upload -->
+  <!-- Receipt upload (expenses only) -->
   {% if tx_type != "income" %}
   <div class="f-field" style="margin-top:.75rem">
     <label class="f-label">Receipt (PDF/Image)</label>
