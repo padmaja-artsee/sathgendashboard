@@ -7,7 +7,12 @@ import os as _os
 
 _bundle_base = _os.environ.get("SATHGEN_BUNDLE_BASE")
 BASE = Path(_bundle_base) if _bundle_base else Path(__file__).resolve().parent.parent
-DB_PATH = BASE / "data" / "crm.db"
+
+_data_env = _os.environ.get("SATHGEN_DATA_DIR")
+if _data_env:
+    DB_PATH = Path(_data_env) / "crm.db"
+else:
+    DB_PATH = BASE / "data" / "crm.db"
 
 
 def now_iso() -> str:
