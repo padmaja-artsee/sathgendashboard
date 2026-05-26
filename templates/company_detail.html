@@ -24,9 +24,6 @@
       {% if detail.country %}<div><label>Country</label> {{ detail.country }}</div>{% endif %}
       {% if detail.region %}<div><label>Region</label> {{ detail.region }}</div>{% endif %}
       {% if detail.owner %}<div><label>Owner</label> {{ detail.owner }}</div>{% endif %}
-      <div><label>Fit Score</label>
-        <span class="stars">{% for i in range(1,6) %}{% if i <= detail.strategic_fit_score %}★{% else %}☆{% endif %}{% endfor %}</span>
-      </div>
     </div>
   </div>
   {% if detail.notes %}<div class="detail-notes">{{ detail.notes }}</div>{% endif %}
