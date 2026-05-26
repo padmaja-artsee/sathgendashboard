@@ -94,7 +94,7 @@
         {% if row.item.is_calculated %}
           <span class="f-calc-total" id="ctot_{{ row.item.id }}">—</span>
         {% else %}
-          <span class="f-row-total" id="rtot_{{ row.item.id }}">${{ "{:,.0f}".format(row.total) }}</span>
+          <span class="f-row-total" id="rtot_{{ row.item.id }}">${{ "{:,.2f}".format(row.total) }}</span>
         {% endif %}
       </td>
     </tr>
@@ -179,7 +179,11 @@ function getVal(lid, m) {
   return inp ? (parseFloat(inp.value)||0) : 0;
 }
 function secItems(sec) { return items.filter(i=>i.section===sec && !i.is_calculated); }
-function fmt(v) { return v===0?'—':'$'+Math.round(v).toLocaleString(); }
+function fmt(v) {
+  if(v===0) return '—';
+  const t = Math.floor(v * 100) / 100; // truncate, don't round up
+  return '$' + t.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
 
 function recalc() {
   let cash = OPENING_BALANCE;

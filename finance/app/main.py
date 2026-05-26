@@ -90,10 +90,13 @@ templates.env.filters["fmtdate"] = _fmt_date
 
 
 def _budget_val(v):
-    """Format a budget cell value for an input: blank if 0, int if whole number."""
+    """Format a budget cell value for an input: blank if 0, always 2 decimal places."""
     if not v:
         return ""
-    return str(int(v)) if v == int(v) else str(round(v, 2))
+    import math
+    # Truncate to 2 decimal places without rounding up
+    truncated = math.floor(v * 100) / 100
+    return f"{truncated:.2f}"
 
 templates.env.filters["budget_val"] = _budget_val
 
