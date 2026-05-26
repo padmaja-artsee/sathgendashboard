@@ -149,31 +149,50 @@ def _or_none(v: str):
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, fy: int = Query(0)):
+    import datetime
     fys = get_fiscal_years()
     if not fy:
         fy = fys[0]
     items  = list_line_items()
-    a_grid = _combined_actuals(fy, items)
-    b_grid = compute_grid(get_budget_grid(fy), items)
+    ob     = get_opening_balance(fy)
+    a_grid = _combined_actuals(fy, items, ob)
+    b_grid = compute_grid(get_budget_grid(fy), items, ob)
     by_name = {i["name"]: i["id"] for i in items}
 
-    def _tot(g, name):
-        lid = by_name.get(name)
-        return sum(g.get((lid, m), 0) for m in FY_MONTHS) if lid else 0
+    # Determine which FY months have elapsed up to today
+    today = datetime.date.today()
+    current_month = today.month
+    # FY runs Apr(4)..Mar(3); months after March belong to fy-1, April+ belong to fy
+    ytd_months = [m for m in FY_MONTHS if (
+        (m >= 4 and (today.year < fy or (today.year == fy - 1 and m <= current_month)))
+        or (m < 4 and (today.year > fy - 1 or (today.year == fy and m <= current_month)))
+    )]
+    if not ytd_months:
+        ytd_months = FY_MONTHS  # fallback: show all if logic yields nothing
+
+    exp_lid  = by_name.get("Total Expenses")
+    cash_lid = by_name.get("Cash Position")
+
+    # Current balance = Cash Position at the latest elapsed month
+    last_month = ytd_months[-1] if ytd_months else FY_MONTHS[-1]
+    current_balance = a_grid.get((cash_lid, last_month), ob) if cash_lid else ob
+
+    # YTD cumulative budget and actual expenses (sum of elapsed months only)
+    ytd_budget   = sum(b_grid.get((exp_lid, m), 0) for m in ytd_months) if exp_lid else 0
+    ytd_expenses = sum(a_grid.get((exp_lid, m), 0) for m in ytd_months) if exp_lid else 0
 
     chart_months   = [MONTH_LABELS[m] for m in FY_MONTHS]
-    exp_budget     = [b_grid.get((by_name.get("Total Expenses"), m), 0) for m in FY_MONTHS]
-    exp_actual     = [a_grid.get((by_name.get("Total Expenses"), m), 0) for m in FY_MONTHS]
-    income_actual  = [a_grid.get((by_name.get("Total Income"),   m), 0) for m in FY_MONTHS]
+    exp_budget     = [b_grid.get((exp_lid, m), 0) for m in FY_MONTHS]
+    exp_actual     = [a_grid.get((exp_lid, m), 0) for m in FY_MONTHS]
+    income_actual  = [a_grid.get((by_name.get("Total Income"), m), 0) for m in FY_MONTHS]
 
     recent = list_transactions(fiscal_year=fy, limit=5)
 
     return templates.TemplateResponse("dashboard.html", _ctx(
         request, fy=fy, fiscal_years=fys, archived=is_archived(fy),
-        total_income    = _tot(a_grid, "Total Income"),
-        total_expenses  = _tot(a_grid, "Total Expenses"),
-        net             = _tot(a_grid, "Balance"),
-        budget_expenses = _tot(b_grid, "Total Expenses"),
+        current_balance = current_balance,
+        ytd_budget      = ytd_budget,
+        ytd_expenses    = ytd_expenses,
         chart_months=chart_months, exp_budget=exp_budget,
         exp_actual=exp_actual, income_actual=income_actual,
         recent=recent,

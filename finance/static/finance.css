@@ -101,6 +101,8 @@ body { font-family: var(--font); color: var(--text); background: var(--grey); di
 .f-kpi-green .f-kpi-val { color: var(--green); }
 .f-kpi-red   .f-kpi-val { color: var(--red); }
 .f-kpi-blue  .f-kpi-val { color: var(--blue); }
+.f-kpi-muted .f-kpi-val { color: var(--text); }
+.f-kpi-sub { display: block; font-size: .7rem; color: var(--muted); margin-top: .25rem; }
 
 /* ─── Cards ─── */
 .f-card { background: #fff; border: 1px solid var(--grey-b); border-radius: 8px; overflow: hidden; }

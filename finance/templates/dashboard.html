@@ -33,21 +33,20 @@
 
 <!-- KPI strip -->
 <div class="f-kpi-row">
-  <div class="f-kpi {% if total_income > 0 %}f-kpi-green{% endif %}">
-    <span class="f-kpi-label">Total Income</span>
-    <span class="f-kpi-val">${{ "{:,.0f}".format(total_income) }}</span>
+  <div class="f-kpi {% if current_balance >= 0 %}f-kpi-green{% else %}f-kpi-red{% endif %}">
+    <span class="f-kpi-label">Current Balance</span>
+    <span class="f-kpi-val">${{ "{:,.2f}".format(current_balance) }}</span>
+    <span class="f-kpi-sub">Running cash position</span>
   </div>
-  <div class="f-kpi {% if total_expenses > 0 %}f-kpi-red{% endif %}">
-    <span class="f-kpi-label">Total Expenses</span>
-    <span class="f-kpi-val">${{ "{:,.0f}".format(total_expenses) }}</span>
+  <div class="f-kpi f-kpi-blue">
+    <span class="f-kpi-label">Cumulative Budget</span>
+    <span class="f-kpi-val">${{ "{:,.2f}".format(ytd_budget) }}</span>
+    <span class="f-kpi-sub">Budgeted expenses so far</span>
   </div>
-  <div class="f-kpi {% if budget_expenses > 0 %}f-kpi-blue{% endif %}">
-    <span class="f-kpi-label">Budgeted Expenses</span>
-    <span class="f-kpi-val">${{ "{:,.0f}".format(budget_expenses) }}</span>
-  </div>
-  <div class="f-kpi {% if net >= 0 %}f-kpi-green{% else %}f-kpi-red{% endif %}">
-    <span class="f-kpi-label">Balance</span>
-    <span class="f-kpi-val">${{ "{:,.0f}".format(net) }}</span>
+  <div class="f-kpi {% if ytd_expenses > ytd_budget %}f-kpi-red{% else %}f-kpi-muted{% endif %}">
+    <span class="f-kpi-label">Cumulative Expenses</span>
+    <span class="f-kpi-val">${{ "{:,.2f}".format(ytd_expenses) }}</span>
+    <span class="f-kpi-sub">Actual expenses so far</span>
   </div>
 </div>
 
