@@ -236,7 +236,12 @@ async def contact_new_form(request: Request, company_id: str = Query("")):
 
 @app.post("/contacts/new")
 async def contact_new_post(
+    request: Request,
     company_id: str = Form(""),
+    new_company_name: str = Form(""),
+    new_company_type: str = Form(""),
+    new_company_website: str = Form(""),
+    new_company_country: str = Form(""),
     first_name: str = Form(""),
     last_name: str = Form(""),
     title: str = Form(""),
@@ -250,7 +255,20 @@ async def contact_new_post(
     nda_status: str = Form("none"),
     notes: str = Form(""),
 ):
-    cid = int(company_id) if company_id.isdigit() else None
+    # If a new company name was submitted, create the company first
+    if new_company_name.strip():
+        cid = create_company({
+            'name': new_company_name.strip(),
+            'company_type': new_company_type,
+            'website': new_company_website,
+            'country': new_company_country,
+            'partnership_type': '', 'therapeutic_focus': '',
+            'region': '', 'strategic_fit_score': 0,
+            'status': 'active', 'owner': '', 'notes': '',
+        })
+    else:
+        cid = int(company_id) if company_id.isdigit() else None
+
     create_contact({
         'company_id': cid, 'first_name': first_name, 'last_name': last_name,
         'title': title, 'email': email, 'phone': phone, 'linkedin': linkedin,

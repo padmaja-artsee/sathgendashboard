@@ -7,7 +7,78 @@
 </div>
 
 <div class="card form-card">
-  <form method="post" action="{{ action }}">
+  <form method="post" action="{{ action }}" id="contact-form">
+
+    <!-- ── Company ─────────────────────────────────────────────── -->
+    <div class="form-section-label">Company</div>
+    <div class="form-grid-2">
+      <div class="form-group" id="company-select-group">
+        <label class="form-label">Select Company</label>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <select name="company_id" class="form-select" id="contact-company-select" style="flex:1">
+            <option value="">— No Company —</option>
+            {% for c in companies %}
+            <option value="{{ c.id }}"
+              {% if contact and contact.company_id == c.id %}selected
+              {% elif not contact and preset_company_id == c.id|string %}selected
+              {% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+          {% if not contact %}
+          <button type="button" class="btn btn-outline btn-sm" id="toggle-new-company" onclick="toggleNewCompany()">
+            + New Company
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Inline New Company Panel ───────────────────────────── -->
+    {% if not contact %}
+    <div id="new-company-panel" style="display:none;background:var(--bg-secondary,#f8f9fa);border:1px solid var(--border,#dee2e6);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <strong style="font-size:.95rem">Add New Company</strong>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="cancelNewCompany()">✕ Cancel</button>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Company Name <span class="required">*</span></label>
+          <input type="text" name="new_company_name" id="new_company_name" class="form-control" placeholder="e.g. Novartis AG">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Company Type</label>
+          <select name="new_company_type" class="form-select">
+            <option value="">— Select Type —</option>
+            {% for val, label in [
+              ('major_pharma','Major Pharma'),
+              ('mid_pharma','Mid-Size Pharma'),
+              ('biotech','Biotech'),
+              ('startup','Startup / Early Stage'),
+              ('cro_cdmo','CRO / CDMO'),
+              ('academic','Academic / Research Institution'),
+              ('vc_pe','VC / PE Firm'),
+              ('government_nonprofit','Government / Non-profit'),
+              ('other','Other')
+            ] %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Website</label>
+          <input type="url" name="new_company_website" class="form-control" placeholder="https://…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Country</label>
+          <input type="text" name="new_company_country" class="form-control">
+        </div>
+      </div>
+      <p class="text-muted" style="font-size:.8rem;margin:0">More company details can be added after saving.</p>
+    </div>
+    {% endif %}
+
+    <!-- ── Contact Details ────────────────────────────────────── -->
+    <div class="form-section-label" style="margin-top:.5rem">Contact Details</div>
     <div class="form-grid-2">
       <div class="form-group">
         <label class="form-label">First Name</label>
@@ -16,18 +87,6 @@
       <div class="form-group">
         <label class="form-label">Last Name</label>
         <input type="text" name="last_name" value="{{ contact.last_name if contact else '' }}" class="form-control">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Company</label>
-        <select name="company_id" class="form-select" id="contact-company-select">
-          <option value="">— No Company —</option>
-          {% for c in companies %}
-          <option value="{{ c.id }}"
-            {% if contact and contact.company_id == c.id %}selected
-            {% elif not contact and preset_company_id == c.id|string %}selected
-            {% endif %}>{{ c.name }}</option>
-          {% endfor %}
-        </select>
       </div>
       <div class="form-group">
         <label class="form-label">Title / Role</label>
@@ -94,4 +153,28 @@
     </div>
   </form>
 </div>
+
+<script>
+function toggleNewCompany() {
+  const panel = document.getElementById('new-company-panel');
+  const sel   = document.getElementById('contact-company-select');
+  const btn   = document.getElementById('toggle-new-company');
+  panel.style.display = 'block';
+  sel.value = '';
+  sel.disabled = true;
+  btn.style.display = 'none';
+}
+
+function cancelNewCompany() {
+  const panel = document.getElementById('new-company-panel');
+  const sel   = document.getElementById('contact-company-select');
+  const btn   = document.getElementById('toggle-new-company');
+  panel.style.display = 'none';
+  sel.disabled = false;
+  btn.style.display = '';
+  // Clear new company fields
+  document.getElementById('new_company_name').value = '';
+  panel.querySelectorAll('input,select').forEach(el => { if (el.tagName === 'SELECT') el.selectedIndex = 0; else if (el.type !== 'hidden') el.value = ''; });
+}
+</script>
 {% endblock %}

@@ -449,6 +449,17 @@ body {
 /* ── Forms ──────────────────────────────────────────────────────────────────── */
 .form-card { padding: 28px; }
 
+.form-section-label {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted, #6c757d);
+  border-bottom: 1px solid var(--border, #dee2e6);
+  padding-bottom: .35rem;
+  margin-bottom: 1rem;
+}
+
 .form-group { margin-bottom: 16px; }
 
 .form-grid-2 {
