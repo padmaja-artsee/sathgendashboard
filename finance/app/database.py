@@ -106,7 +106,7 @@ LINE_ITEMS_SEED = [
     ("admin",    "Taxes",                     0, 1, 15),
     ("admin",    "Insurance expense",         0, 1, 20),
     ("admin",    "Accounting",                0, 1, 30),
-    ("admin",    "Legal",                     0, 1, 40),
+    ("admin",    "Consultant/Legal",                     0, 1, 40),
     ("admin",    "LLC",                       0, 1, 50),
     ("admin",    "Payroll services",          0, 1, 60),
     ("admin",    "Interest Expense",          0, 1, 65),
@@ -190,9 +190,9 @@ ACCOUNTS_SEED = [
     ("Business Owners Insurance",   "admin",    "Insurance expense",        1, 139),
     ("Insurance",                   "admin",    "Insurance expense",        1, 140),
     ("Accounting & Audit",          "admin",    "Accounting",               1, 150),
-    ("Legal Fees",                  "admin",    "Legal",                    1, 160),
-    ("Professional Fees",           "admin",    "Legal",                    1, 170),
-    ("Consultant Expense",          "admin",    "Legal",                    1, 175),
+    ("Legal Fees",                  "admin",    "Consultant/Legal",                    1, 160),
+    ("Professional Fees",           "admin",    "Consultant/Legal",                    1, 170),
+    ("Consultant Expense",          "admin",    "Consultant/Legal",                    1, 175),
     ("LLC / State Fees",            "admin",    "LLC",                      1, 180),
     ("Payroll Services",            "admin",    "Payroll services",         1, 190),
     ("Interest Expense",            "admin",    "Interest Expense",         1, 195),
@@ -404,6 +404,10 @@ def _run_migrations(conn) -> None:
     conn.execute(
         "INSERT OR IGNORE INTO line_items (section,name,is_calculated,is_system,sort_order) "
         "VALUES ('totals','Cash Position',1,1,30)"
+    )
+    # Rename "Legal" sub-section → "Consultant/Legal"
+    conn.execute(
+        "UPDATE line_items SET name='Consultant/Legal' WHERE name='Legal' AND section='admin'"
     )
 
     # 1. Add missing line items (INSERT OR IGNORE respects UNIQUE(section,name))
