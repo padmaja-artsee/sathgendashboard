@@ -1,13 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Log Activity — Sathgen BD CRM{% endblock %}
+{% block title %}{{ 'Edit' if activity else 'Log' }} Activity — Sathgen BD CRM{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div class="breadcrumb"><a href="/activities">Activities</a> / <span>New Activity</span></div>
-  <h1>Log Activity</h1>
+  <div class="breadcrumb"><a href="/activities">Activities</a> / <span>{{ 'Edit Activity' if activity else 'Log Activity' }}</span></div>
+  <h1>{{ 'Edit Activity' if activity else 'Log Activity' }}</h1>
 </div>
 
 <div class="card form-card">
   <form method="post" action="{{ action }}">
+    {% if activity %}
+    <input type="hidden" name="next_url" value="/companies/{{ activity.company_id }}?tab=activities">
+    {% endif %}
+
+    <div class="form-section-label">When &amp; What</div>
     <div class="form-grid-2">
       <div class="form-group">
         <label class="form-label">Date <span class="required">*</span></label>
@@ -17,13 +22,29 @@
         <label class="form-label">Activity Type</label>
         <select name="activity_type" class="form-select">
           {% for val in ['email','call','meeting','linkedin','conference','intro','data_room','note'] %}
-          <option value="{{ val }}" {% if activity and activity.activity_type == val %}selected{% elif not activity and val == 'email' %}selected{% endif %}>{{ val | title }}</option>
+          <option value="{{ val }}" {% if activity and activity.activity_type == val %}selected{% elif not activity and val == 'email' %}selected{% endif %}>{{ val | replace('_',' ') | title }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="form-group">
+        <label class="form-label">Sentiment</label>
+        <select name="sentiment" class="form-select">
+          {% for val, label in [('very_positive','Very Positive'),('positive','Positive'),('neutral','Neutral'),('negative','Negative'),('very_negative','Very Negative')] %}
+          <option value="{{ val }}" {% if activity and activity.sentiment == val %}selected{% elif not activity and val == 'neutral' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Owner</label>
+        <input type="text" name="owner" value="{{ activity.owner if activity else '' }}" class="form-control">
+      </div>
+    </div>
+
+    <div class="form-section-label">Who</div>
+    <div class="form-grid-2">
+      <div class="form-group">
         <label class="form-label">Company</label>
-        <select name="company_id" class="form-select" id="act-company-select">
+        <select name="company_id" class="form-select" id="act-company-select" onchange="loadContacts(this.value)">
           <option value="">— Select Company —</option>
           {% for c in companies %}
           <option value="{{ c.id }}"
@@ -34,7 +55,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Contact</label>
+        <label class="form-label">Contact <span class="text-muted" style="font-weight:400;font-size:.8rem">(filtered by company)</span></label>
         <select name="contact_id" class="form-select" id="act-contact-select">
           <option value="">— Select Contact —</option>
           {% for c in contacts %}
@@ -57,19 +78,9 @@
           {% endfor %}
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Sentiment</label>
-        <select name="sentiment" class="form-select">
-          {% for val, label in [('very_positive','Very Positive'),('positive','Positive'),('neutral','Neutral'),('negative','Negative'),('very_negative','Very Negative')] %}
-          <option value="{{ val }}" {% if activity and activity.sentiment == val %}selected{% elif not activity and val == 'neutral' %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Owner</label>
-        <input type="text" name="owner" value="{{ activity.owner if activity else '' }}" class="form-control">
-      </div>
     </div>
+
+    <div class="form-section-label">Notes</div>
     <div class="form-group">
       <label class="form-label">Summary</label>
       <textarea name="summary" class="form-control" rows="6" placeholder="Detailed notes from this interaction…">{{ activity.summary if activity else '' }}</textarea>
@@ -82,9 +93,13 @@
       <label class="form-label">Action Items</label>
       <textarea name="action_items" class="form-control" rows="3" placeholder="Follow-up actions required…">{{ activity.action_items if activity else '' }}</textarea>
     </div>
+
+    <div class="form-section-label">Follow-up</div>
     <div class="form-group">
       <label class="form-label checkbox-label">
-        <input type="checkbox" name="follow_up_required" id="follow-up-checkbox" value="1" {% if activity and activity.follow_up_required %}checked{% endif %}>
+        <input type="checkbox" name="follow_up_required" id="follow-up-checkbox" value="1"
+          {% if activity and activity.follow_up_required %}checked{% endif %}
+          onchange="document.getElementById('followup-fields').classList.toggle('hidden', !this.checked)">
         Create Follow-up Reminder
       </label>
     </div>
@@ -97,15 +112,43 @@
         <label class="form-label">Follow-up Priority</label>
         <select name="follow_up_priority" class="form-select">
           {% for val in ['urgent','high','medium','low'] %}
-          <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ val | title }}</option>
+          <option value="{{ val }}"
+            {% if activity and activity.follow_up_priority == val %}selected
+            {% elif not activity and val == 'medium' %}selected{% endif %}>{{ val | title }}</option>
           {% endfor %}
         </select>
       </div>
     </div>
+
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Log Activity</button>
+      <button type="submit" class="btn btn-primary">{{ 'Save Changes' if activity else 'Log Activity' }}</button>
+      {% if activity and activity.company_id %}
+      <a href="/companies/{{ activity.company_id }}?tab=activities" class="btn btn-ghost">Cancel</a>
+      {% else %}
       <a href="/activities" class="btn btn-ghost">Cancel</a>
+      {% endif %}
     </div>
   </form>
 </div>
+
+<script>
+// Dynamically reload contact dropdown when company changes
+async function loadContacts(companyId) {
+  const sel = document.getElementById('act-contact-select');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select Contact —</option>';
+  if (!companyId) return;
+  try {
+    const res = await fetch('/api/contacts-for-company?company_id=' + companyId);
+    const data = await res.json();
+    data.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      if (String(c.id) === String(current)) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+</script>
 {% endblock %}

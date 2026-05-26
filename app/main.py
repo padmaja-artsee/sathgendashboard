@@ -625,6 +625,64 @@ async def activity_detail(request: Request, activity_id: int):
     ))
 
 
+@app.get("/activities/{activity_id}/edit", response_class=HTMLResponse)
+async def activity_edit_form(request: Request, activity_id: int):
+    activity = get_activity(activity_id)
+    if not activity:
+        return RedirectResponse("/activities", status_code=303)
+    cid = activity.get('company_id')
+    contacts = list_contacts(company_id=cid) if cid else list_contacts()
+    return templates.TemplateResponse("activity_form.html", ctx(
+        request, page="activities",
+        activity=activity,
+        companies=list_companies(),
+        contacts=contacts,
+        opportunities=list_opportunities(status='open'),
+        preset_company_id=str(cid) if cid else "",
+        preset_contact_id=str(activity.get('contact_id') or ""),
+        preset_opportunity_id=str(activity.get('opportunity_id') or ""),
+        today=_today(),
+        action=f"/activities/{activity_id}/edit",
+    ))
+
+
+@app.post("/activities/{activity_id}/edit")
+async def activity_edit_post(
+    activity_id: int,
+    next_url: str = Form(""),
+    company_id: str = Form(""),
+    contact_id: str = Form(""),
+    opportunity_id: str = Form(""),
+    activity_date: str = Form(...),
+    activity_type: str = Form("email"),
+    subject: str = Form(""),
+    summary: str = Form(""),
+    documents_shared: str = Form(""),
+    action_items: str = Form(""),
+    follow_up_required: str = Form(""),
+    follow_up_date: str = Form(""),
+    follow_up_priority: str = Form("medium"),
+    sentiment: str = Form("neutral"),
+    owner: str = Form(""),
+):
+    cid = int(company_id) if company_id.isdigit() else None
+    update_activity(activity_id, {
+        'company_id': cid,
+        'contact_id': int(contact_id) if contact_id.isdigit() else None,
+        'opportunity_id': int(opportunity_id) if opportunity_id.isdigit() else None,
+        'activity_date': activity_date, 'activity_type': activity_type,
+        'subject': subject, 'summary': summary, 'documents_shared': documents_shared,
+        'action_items': action_items, 'follow_up_required': bool(follow_up_required),
+        'follow_up_date': follow_up_date, 'follow_up_priority': follow_up_priority,
+        'sentiment': sentiment, 'owner': owner,
+    })
+    if next_url.startswith("/"):
+        return RedirectResponse(next_url, status_code=303)
+    if cid:
+        return RedirectResponse(f"/companies/{cid}?tab=activities", status_code=303)
+    return RedirectResponse("/activities", status_code=303)
+
+
 @app.post("/activities/{activity_id}/delete")
 async def activity_delete(activity_id: int, next_url: str = Form("")):
     act = get_activity(activity_id)
@@ -633,7 +691,7 @@ async def activity_delete(activity_id: int, next_url: str = Form("")):
     if next_url.startswith("/"):
         return RedirectResponse(next_url, status_code=303)
     if cid:
-        return RedirectResponse(f"/companies/{cid}", status_code=303)
+        return RedirectResponse(f"/companies/{cid}?tab=activities", status_code=303)
     return RedirectResponse("/activities", status_code=303)
 
 

@@ -206,8 +206,9 @@
       {% if a.summary %}<div class="timeline-body">{{ a.summary }}</div>{% endif %}
       {% if a.contact_name %}<div class="timeline-contact">Contact: {{ a.contact_name }}</div>{% endif %}
       <div class="timeline-actions">
+        <a href="/activities/{{ a.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
         <form method="post" action="/activities/{{ a.id }}/delete" class="inline-form" data-confirm="Delete this activity?">
-          <input type="hidden" name="next_url" value="/companies/{{ detail.id }}">
+          <input type="hidden" name="next_url" value="/companies/{{ detail.id }}?tab=activities">
           <button class="btn btn-ghost btn-sm">Delete</button>
         </form>
       </div>
