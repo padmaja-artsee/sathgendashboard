@@ -5,7 +5,6 @@
   <div class="breadcrumb"><a href="/companies">Companies</a> / <span>{{ detail.name }}</span></div>
   <div class="header-actions">
     <a href="/companies/{{ detail.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
-    <a href="/contacts/new?company_id={{ detail.id }}" class="btn btn-outline btn-sm">+ Contact</a>
     <a href="/opportunities/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Opportunity</a>
     <a href="/activities/new?company_id={{ detail.id }}" class="btn btn-outline btn-sm">+ Activity</a>
   </div>
@@ -24,7 +23,6 @@
       {% if detail.website %}<div><label>Website</label> <a href="{{ detail.website }}" target="_blank">{{ detail.website }}</a></div>{% endif %}
       {% if detail.country %}<div><label>Country</label> {{ detail.country }}</div>{% endif %}
       {% if detail.region %}<div><label>Region</label> {{ detail.region }}</div>{% endif %}
-      {% if detail.therapeutic_focus %}<div><label>Focus</label> {{ detail.therapeutic_focus }}</div>{% endif %}
       {% if detail.owner %}<div><label>Owner</label> {{ detail.owner }}</div>{% endif %}
       <div><label>Fit Score</label>
         <span class="stars">{% for i in range(1,6) %}{% if i <= detail.strategic_fit_score %}★{% else %}☆{% endif %}{% endfor %}</span>
@@ -35,41 +33,134 @@
 </div>
 
 <div class="tabs" id="company-tabs">
-  <button class="tab-btn active" data-tab="contacts-tab">Contacts ({{ detail.contacts|length }})</button>
-  <button class="tab-btn" data-tab="opps-tab">Opportunities ({{ detail.opportunities|length }})</button>
-  <button class="tab-btn" data-tab="activities-tab">Activities ({{ detail.activities|length }})</button>
-  <button class="tab-btn" data-tab="followups-tab">Follow-ups ({{ detail.followups|length }})</button>
-  <button class="tab-btn" data-tab="docs-tab">Documents ({{ detail.doc_shares|length }})</button>
+  <button class="tab-btn {% if active_tab == 'contacts' %}active{% endif %}" data-tab="contacts-tab">Contacts ({{ detail.contacts|length }})</button>
+  <button class="tab-btn {% if active_tab == 'opps' %}active{% endif %}" data-tab="opps-tab">Opportunities ({{ detail.opportunities|length }})</button>
+  <button class="tab-btn {% if active_tab == 'activities' %}active{% endif %}" data-tab="activities-tab">Activities ({{ detail.activities|length }})</button>
+  <button class="tab-btn {% if active_tab == 'followups' %}active{% endif %}" data-tab="followups-tab">Follow-ups ({{ detail.followups|length }})</button>
+  <button class="tab-btn {% if active_tab == 'docs' %}active{% endif %}" data-tab="docs-tab">Documents ({{ detail.doc_shares|length }})</button>
 </div>
 
-<div id="contacts-tab" class="tab-panel card">
+<!-- ── Contacts Tab ─────────────────────────────────────────────────────── -->
+<div id="contacts-tab" class="tab-panel card {% if active_tab != 'contacts' %}hidden{% endif %}">
   <div class="card-header">
     <h3 class="card-title">Contacts</h3>
-    <a href="/contacts/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Contact</a>
+    <button class="btn btn-primary btn-sm" onclick="toggleAddContact()">+ Add Contact</button>
   </div>
+
+  <!-- Inline Add Contact Form -->
+  <div id="add-contact-form" style="display:none;background:var(--bg-secondary,#f8f9fa);border:1px solid var(--border,#dee2e6);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <strong>New Contact at {{ detail.name }}</strong>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="toggleAddContact()">✕</button>
+    </div>
+    <form method="post" action="/companies/{{ detail.id }}/contacts/new">
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label class="form-label">First Name</label>
+          <input type="text" name="first_name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input type="text" name="last_name" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Title / Role</label>
+          <input type="text" name="title" class="form-control" placeholder="e.g. VP BD">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="tel" name="phone" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">LinkedIn</label>
+          <input type="url" name="linkedin" class="form-control" placeholder="https://linkedin.com/in/…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role Type</label>
+          <select name="role_type" class="form-select">
+            <option value="">— Select —</option>
+            {% for val, label in [('decision_maker','Decision Maker'),('champion','Champion'),('influencer','Influencer'),('gatekeeper','Gatekeeper'),('technical','Technical')] %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Relationship</label>
+          <select name="relationship_strength" class="form-select">
+            {% for val in ['cold','warm','strong','advocate'] %}
+            <option value="{{ val }}" {% if val == 'warm' %}selected{% endif %}>{{ val | title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">NDA Status</label>
+          <select name="nda_status" class="form-select">
+            {% for val in ['none','sent','signed','expired'] %}
+            <option value="{{ val }}" {% if val == 'none' %}selected{% endif %}>{{ val | title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea name="notes" class="form-control" rows="2"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Contact</button>
+        <button type="button" class="btn btn-ghost" onclick="toggleAddContact()">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Contact Cards -->
   {% if detail.contacts %}
-  <table class="table table-sm">
-    <thead><tr><th>Name</th><th>Title</th><th>Email</th><th>Role</th><th>Relationship</th><th>NDA</th><th></th></tr></thead>
-    <tbody>
-      {% for c in detail.contacts %}
-      <tr>
-        <td><a href="/contacts/{{ c.id }}" class="link-primary">{{ c.first_name }} {{ c.last_name }}</a></td>
-        <td>{{ c.title or '—' }}</td>
-        <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}—{% endif %}</td>
-        <td><span class="badge role-{{ c.role_type }}">{{ c.role_type | replace('_',' ') if c.role_type else '—' }}</span></td>
-        <td><span class="badge rel-{{ c.relationship_strength }}">{{ c.relationship_strength }}</span></td>
-        <td><span class="badge nda-{{ c.nda_status }}">{{ c.nda_status }}</span></td>
-        <td><a href="/contacts/{{ c.id }}/edit" class="btn btn-ghost btn-sm">Edit</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="contact-card-list">
+    {% for c in detail.contacts %}
+    <div class="contact-card" id="cc-{{ c.id }}">
+      <div class="contact-card-summary" onclick="toggleContact({{ c.id }})">
+        <div class="contact-avatar">{{ (c.first_name[0] if c.first_name else '?') | upper }}{{ (c.last_name[0] if c.last_name else '') | upper }}</div>
+        <div class="contact-card-main">
+          <div class="contact-card-name">{{ c.first_name }} {{ c.last_name }}</div>
+          <div class="contact-card-sub">{{ c.title or '' }}{% if c.title and c.email %} &middot; {% endif %}{% if c.email %}<a href="mailto:{{ c.email }}" onclick="event.stopPropagation()">{{ c.email }}</a>{% endif %}</div>
+        </div>
+        <div class="contact-card-badges">
+          {% if c.role_type %}<span class="badge role-{{ c.role_type }}">{{ c.role_type | replace('_',' ') }}</span>{% endif %}
+          <span class="badge rel-{{ c.relationship_strength }}">{{ c.relationship_strength }}</span>
+          {% if c.nda_status and c.nda_status != 'none' %}<span class="badge nda-{{ c.nda_status }}">NDA {{ c.nda_status }}</span>{% endif %}
+        </div>
+        <div class="contact-card-chevron">▸</div>
+      </div>
+      <div class="contact-card-detail hidden" id="cd-{{ c.id }}">
+        <div class="contact-detail-grid">
+          {% if c.phone %}<div><label>Phone</label><span>{{ c.phone }}</span></div>{% endif %}
+          {% if c.linkedin %}<div><label>LinkedIn</label><span><a href="{{ c.linkedin }}" target="_blank">Profile</a></span></div>{% endif %}
+          {% if c.source %}<div><label>Source</label><span>{{ c.source | title }}</span></div>{% endif %}
+          {% if c.first_contact_date %}<div><label>First Contact</label><span>{{ c.first_contact_date }}</span></div>{% endif %}
+          {% if c.last_interaction_date %}<div><label>Last Interaction</label><span>{{ c.last_interaction_date }}</span></div>{% endif %}
+        </div>
+        {% if c.notes %}<div class="contact-detail-notes">{{ c.notes }}</div>{% endif %}
+        <div class="contact-detail-actions">
+          <a href="/contacts/{{ c.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
+          <a href="/activities/new?company_id={{ detail.id }}&contact_id={{ c.id }}" class="btn btn-outline btn-sm">+ Activity</a>
+          <form method="post" action="/contacts/{{ c.id }}/delete" class="inline-form" data-confirm="Delete {{ c.first_name }} {{ c.last_name }}?">
+            <button class="btn btn-danger btn-sm">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
   {% else %}
-  <div class="empty-state"><p>No contacts yet.</p><a href="/contacts/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Contact</a></div>
+  <div class="empty-state"><p>No contacts yet.</p><button class="btn btn-primary btn-sm" onclick="toggleAddContact()">+ Add First Contact</button></div>
   {% endif %}
 </div>
 
-<div id="opps-tab" class="tab-panel card hidden">
+<!-- ── Opportunities Tab ────────────────────────────────────────────────── -->
+<div id="opps-tab" class="tab-panel card {% if active_tab != 'opps' %}hidden{% endif %}">
   <div class="card-header">
     <h3 class="card-title">Opportunities</h3>
     <a href="/opportunities/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Opportunity</a>
@@ -96,7 +187,8 @@
   {% endif %}
 </div>
 
-<div id="activities-tab" class="tab-panel card hidden">
+<!-- ── Activities Tab ───────────────────────────────────────────────────── -->
+<div id="activities-tab" class="tab-panel card {% if active_tab != 'activities' %}hidden{% endif %}">
   <div class="card-header">
     <h3 class="card-title">Activity Timeline</h3>
     <a href="/activities/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Log Activity</a>
@@ -127,7 +219,8 @@
   {% endif %}
 </div>
 
-<div id="followups-tab" class="tab-panel card hidden">
+<!-- ── Follow-ups Tab ───────────────────────────────────────────────────── -->
+<div id="followups-tab" class="tab-panel card {% if active_tab != 'followups' %}hidden{% endif %}">
   <div class="card-header">
     <h3 class="card-title">Follow-ups</h3>
     <a href="/followups/new?company_id={{ detail.id }}" class="btn btn-primary btn-sm">+ Add Follow-up</a>
@@ -158,7 +251,8 @@
   {% endif %}
 </div>
 
-<div id="docs-tab" class="tab-panel card hidden">
+<!-- ── Documents Tab ────────────────────────────────────────────────────── -->
+<div id="docs-tab" class="tab-panel card {% if active_tab != 'docs' %}hidden{% endif %}">
   <div class="card-header">
     <h3 class="card-title">Documents Shared</h3>
     <a href="/documents" class="btn btn-outline btn-sm">Manage Docs</a>
@@ -183,4 +277,19 @@
   {% endif %}
 </div>
 
+<script>
+function toggleAddContact() {
+  const f = document.getElementById('add-contact-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  if (f.style.display === 'block') f.querySelector('input[name="first_name"]').focus();
+}
+
+function toggleContact(id) {
+  const detail = document.getElementById('cd-' + id);
+  const chevron = document.querySelector('#cc-' + id + ' .contact-card-chevron');
+  const isOpen = !detail.classList.contains('hidden');
+  detail.classList.toggle('hidden');
+  chevron.textContent = isOpen ? '▸' : '▾';
+}
+</script>
 {% endblock %}

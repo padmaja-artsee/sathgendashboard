@@ -151,12 +151,12 @@ async def company_new_post(
 
 
 @app.get("/companies/{company_id}", response_class=HTMLResponse)
-async def company_detail(request: Request, company_id: int):
+async def company_detail(request: Request, company_id: int, tab: str = Query("contacts")):
     detail = get_company_detail(company_id)
     if not detail:
         return RedirectResponse("/companies", status_code=303)
     return templates.TemplateResponse("company_detail.html", ctx(
-        request, page="companies", detail=detail, today=_today(),
+        request, page="companies", detail=detail, today=_today(), active_tab=tab,
     ))
 
 
@@ -201,6 +201,33 @@ async def company_edit_post(
 async def company_delete(company_id: int):
     delete_company(company_id)
     return RedirectResponse("/companies", status_code=303)
+
+
+@app.post("/companies/{company_id}/contacts/new")
+async def company_add_contact(
+    company_id: int,
+    first_name: str = Form(""),
+    last_name: str = Form(""),
+    title: str = Form(""),
+    email: str = Form(""),
+    phone: str = Form(""),
+    linkedin: str = Form(""),
+    role_type: str = Form(""),
+    relationship_strength: str = Form("warm"),
+    source: str = Form(""),
+    first_contact_date: str = Form(""),
+    nda_status: str = Form("none"),
+    notes: str = Form(""),
+):
+    create_contact({
+        'company_id': company_id,
+        'first_name': first_name, 'last_name': last_name,
+        'title': title, 'email': email, 'phone': phone, 'linkedin': linkedin,
+        'role_type': role_type, 'relationship_strength': relationship_strength,
+        'source': source, 'first_contact_date': first_contact_date,
+        'nda_status': nda_status, 'notes': notes,
+    })
+    return RedirectResponse(f"/companies/{company_id}?tab=contacts", status_code=303)
 
 
 # ── Contacts ───────────────────────────────────────────────────────────────────

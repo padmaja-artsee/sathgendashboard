@@ -446,6 +446,105 @@ body {
 
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 
+/* ── Contact Cards (Company Detail) ─────────────────────────────────────────── */
+.contact-card-list { display: flex; flex-direction: column; gap: .5rem; }
+
+.contact-card { border: 1px solid var(--border, #dee2e6); border-radius: 8px; overflow: hidden; }
+
+.contact-card-summary {
+  display: flex; align-items: center; gap: 1rem;
+  padding: .85rem 1rem; cursor: pointer;
+  background: var(--bg, #fff);
+  transition: background .15s;
+}
+.contact-card-summary:hover { background: var(--bg-secondary, #f8f9fa); }
+
+.contact-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--accent, #16a34a); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; font-weight: 700; flex-shrink: 0;
+}
+
+.contact-card-main { flex: 1; min-width: 0; }
+.contact-card-name { font-weight: 600; font-size: .95rem; }
+.contact-card-sub  { font-size: .8rem; color: var(--text-secondary, #6c757d); margin-top: .1rem; }
+
+.contact-card-badges { display: flex; gap: .3rem; flex-wrap: wrap; }
+.contact-card-chevron { color: var(--text-secondary, #6c757d); font-size: .8rem; flex-shrink: 0; transition: transform .2s; }
+
+.contact-card-detail {
+  border-top: 1px solid var(--border, #dee2e6);
+  padding: 1rem;
+  background: var(--bg-secondary, #f8f9fa);
+}
+
+.contact-detail-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .5rem .75rem; margin-bottom: .75rem;
+}
+.contact-detail-grid > div { font-size: .85rem; }
+.contact-detail-grid label { font-weight: 600; color: var(--text-secondary, #6c757d); margin-right: .3rem; font-size: .75rem; text-transform: uppercase; }
+
+.contact-detail-notes { font-size: .85rem; color: var(--text-secondary); border-top: 1px solid var(--border); padding-top: .75rem; margin-top: .5rem; margin-bottom: .75rem; }
+.contact-detail-actions { display: flex; gap: .5rem; align-items: center; }
+
+.form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+@media (max-width: 768px) { .form-grid-3 { grid-template-columns: 1fr 1fr; } }
+
+/* ── Rolodex (Contacts Page) ─────────────────────────────────────────────────── */
+.rolodex-grid { display: flex; flex-direction: column; gap: .5rem; }
+
+.rolodex-card {
+  border: 1px solid var(--border, #dee2e6); border-radius: 8px;
+  overflow: hidden; background: #fff;
+  transition: box-shadow .15s;
+}
+.rolodex-card.rolodex-open { box-shadow: 0 2px 12px rgba(0,0,0,.1); border-color: var(--accent, #16a34a); }
+
+.rolodex-summary {
+  display: flex; align-items: center; gap: 1rem;
+  padding: .9rem 1.1rem; cursor: pointer;
+  transition: background .15s;
+}
+.rolodex-summary:hover { background: var(--bg-secondary, #f8f9fa); }
+
+.rolodex-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: linear-gradient(135deg, #16a34a, #0d9488);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: .85rem; font-weight: 700; flex-shrink: 0;
+}
+
+.rolodex-main { flex: 1; min-width: 0; }
+.rolodex-name    { font-weight: 600; font-size: 1rem; }
+.rolodex-title   { font-size: .82rem; color: var(--text-secondary, #6c757d); margin-top: .1rem; }
+.rolodex-company { font-size: .82rem; color: var(--accent, #16a34a); margin-top: .1rem; font-weight: 500; }
+
+.rolodex-badges  { display: flex; gap: .3rem; flex-wrap: wrap; align-items: center; }
+.rolodex-chevron { color: var(--text-secondary, #6c757d); font-size: .9rem; flex-shrink: 0; }
+
+.rolodex-detail {
+  border-top: 1px solid var(--border, #dee2e6);
+  padding: 1rem 1.1rem;
+  background: var(--bg-secondary, #f8f9fa);
+}
+
+.rolodex-detail-grid { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .75rem; }
+.rolodex-detail-row  { display: flex; gap: .75rem; font-size: .875rem; align-items: baseline; }
+.rolodex-detail-label {
+  font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  color: var(--text-secondary, #6c757d); letter-spacing: .04em;
+  width: 110px; flex-shrink: 0;
+}
+
+.rolodex-notes {
+  font-size: .85rem; color: var(--text-secondary);
+  border-top: 1px solid var(--border); padding-top: .75rem;
+  margin-top: .5rem; margin-bottom: .75rem;
+}
+.rolodex-actions { display: flex; gap: .5rem; align-items: center; }
+
 /* ── Forms ──────────────────────────────────────────────────────────────────── */
 .form-card { padding: 28px; }
 
